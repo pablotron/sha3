@@ -4,7 +4,15 @@
 #include <string.h>
 #include "sha3.h"
 
-static void run_shake128_xof(const uint8_t *msg, const size_t msg_len, const size_t out_len) {
+// print hex-encoded buffer to stdout.
+static void print_hex(const uint8_t * const buf, const size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    printf("%02x", buf[i]);
+  }
+}
+
+// shake128-xof handler
+static void do_shake128_xof(const uint8_t *msg, const size_t msg_len, const size_t out_len) {
   // init xof
   sha3_xof_t xof;
   shake128_xof_init(&xof);
@@ -15,22 +23,19 @@ static void run_shake128_xof(const uint8_t *msg, const size_t msg_len, const siz
     exit(-1);
   }
 
-  // squeeze
   uint8_t buf[64];
   for (size_t i = 0; i < out_len; i += sizeof(buf)) {
+    // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     shake128_xof_squeeze(&xof, buf, len);
-
-    // print result
-    for (size_t j = 0; j < len; j++) {
-      printf("%02x", buf[j]);
-    }
+    print_hex(buf, len);
   }
 
   fputs("\n", stdout);
 }
 
-static void run_shake256_xof(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
+// shake256-xof handler
+static void do_shake256_xof(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
   // init xof
   sha3_xof_t xof;
   shake256_xof_init(&xof);
@@ -41,22 +46,18 @@ static void run_shake256_xof(const uint8_t * const msg, const size_t msg_len, co
     exit(-1);
   }
 
-  // squeeze
   uint8_t buf[64];
   for (size_t i = 0; i < out_len; i += sizeof(buf)) {
+    // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     shake256_xof_squeeze(&xof, buf, len);
-
-    // print result
-    for (size_t j = 0; j < len; j++) {
-      printf("%02x", buf[j]);
-    }
+    print_hex(buf, len);
   }
 
   fputs("\n", stdout);
 }
 
-// available functions
+// available hash functions
 static const struct {
   const char *name;
   const size_t size;
@@ -88,14 +89,31 @@ static const struct {
   .hash_func = shake256,
 }, {
   .name = "shake128-xof",
-  .size = 16,
-  .xof_func = run_shake128_xof,
+  .size = 16, // default size
+  .xof_func = do_shake128_xof,
 }, {
   .name = "shake256-xof",
-  .size = 32,
-  .xof_func = run_shake256_xof,
+  .size = 32, // default size
+  .xof_func = do_shake256_xof,
 }};
 
+// number of hash functions
+#define NUM_FNS (sizeof(fns) / sizeof(fns[0]))
+
+// get hash function offset in fns.  returns NUM_FNS if the function is
+// unknown.
+static size_t get_fn_ofs(const char * const name) {
+  for (size_t i = 0; i < NUM_FNS; i++) {
+    if (!strncmp(name, fns[i].name, strlen(fns[i].name) + 1)) {
+      return i;
+    }
+  }
+
+  // not found
+  return NUM_FNS;
+}
+
+// usage format string
 #define USAGE "Usage: %s <algo> <data> [xof-size]\n" \
               "\n" \
               "Algorithms:\n" \
@@ -113,40 +131,36 @@ static const struct {
               "  dd2781f4c51bccdbe23e4d398b8a82261f585c278dbb4b84989fea70e76723a9\n"
 
 int main(int argc, char *argv[]) {
+  // check command-line arguments
   if (argc < 3) {
     const char *app = (argc > 0) ? argv[0] : "sha3";
     fprintf(stderr, USAGE, app, app);
     return -1;
   }
 
+  // get message and message length
   const uint8_t * const msg = (uint8_t*) argv[2];
   const size_t len = strlen(argv[2]);
 
-  for (size_t i = 0; i < sizeof(fns)/sizeof(fns[0]); i++) {
-    if (strncmp(argv[1], fns[i].name, strlen(fns[i].name) + 1)) {
-      continue;
-    }
-
-    if (fns[i].xof_func) {
-      // get output size
-      const size_t out_size = (argc == 4) ? (size_t) atoi(argv[3]) : fns[i].size;
-      fns[i].xof_func(msg, len, out_size);
-    } else {
-      // hash into buf
-      uint8_t buf[64];
-      fns[i].hash_func(msg, len, buf);
-
-      // print result
-      for (size_t j = 0; j < fns[i].size; j++) {
-        printf("%02x", buf[j]);
-      }
-      fputs("\n", stdout);
-    }
-
-    // exit with success
-    return 0;
+  // get function offset
+  const size_t ofs = get_fn_ofs(argv[1]);
+  if (ofs == NUM_FNS) {
+    fprintf(stderr, "Unknown algorithm: %s\n", argv[1]);
+    return -1;
   }
 
-  fprintf(stderr, "Unknown algorithm: %s\n", argv[1]);
-  return -1;
+  if (fns[ofs].xof_func) {
+    // get output size from argument, or use default output size
+    const size_t out_size = (argc == 4) ? (size_t) atoi(argv[3]) : fns[ofs].size;
+    fns[ofs].xof_func(msg, len, out_size);
+  } else {
+    // hash into buffer, print buffer, print newline
+    uint8_t buf[64];
+    fns[ofs].hash_func(msg, len, buf);
+    print_hex(buf, fns[ofs].size);
+    fputs("\n", stdout);
+  }
+
+  // exit with success
+  return 0;
 }
