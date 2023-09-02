@@ -294,6 +294,18 @@ static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, uint8_
   }
 }
 
+static inline void xof_once(const size_t rate, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  // init
+  sha3_xof_t xof;
+  xof_init(&xof);
+
+  // absorb (ignore error)
+  (void) xof_absorb(&xof, rate, src, src_len);
+
+  // squeeze
+  xof_squeeze(&xof, rate, dst, dst_len);
+}
+
 #define SHAKE128_XOF_RATE (200 - 2 * 16)
 
 void shake128_xof_init(sha3_xof_t * const xof) {
@@ -309,15 +321,7 @@ void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const siz
 }
 
 void shake128_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  // init
-  sha3_xof_t xof;
-  shake128_xof_init(&xof);
-
-  // absorb (ignore error)
-  (void) shake128_xof_absorb(&xof, src, src_len);
-
-  // squeeze
-  shake128_xof_squeeze(&xof, dst, dst_len);
+  xof_once(SHAKE128_XOF_RATE, src, src_len, dst, dst_len);
 }
 
 #define SHAKE256_XOF_RATE (200 - 2 * 32)
@@ -335,15 +339,7 @@ void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const siz
 }
 
 void shake256_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  // init
-  sha3_xof_t xof;
-  shake256_xof_init(&xof);
-
-  // absorb (ignore error)
-  (void) shake256_xof_absorb(&xof, src, src_len);
-
-  // squeeze
-  shake256_xof_squeeze(&xof, dst, dst_len);
+  xof_once(SHAKE256_XOF_RATE, src, src_len, dst, dst_len);
 }
 
 #ifdef SHA3_TEST
@@ -1708,6 +1704,301 @@ static void test_shake256_xof_once(void) {
   }
 }
 
+// NIST SP 800-105 utility function.
+static inline size_t left_encode(uint8_t buf[static 9], const uint64_t n) {
+  if (n > 0x00ffffffffffffffULL) {
+    buf[0] = 8;
+    buf[1] = (n >> 56) & 0xff;
+    buf[2] = (n >> 40) & 0xff;
+    buf[3] = (n >> 32) & 0xff;
+    buf[4] = (n >> 24) & 0xff;
+    buf[5] = (n >> 16) & 0xff;
+    buf[6] = (n >> 8) & 0xff;
+    buf[7] = n & 0xff;
+    return 9;
+  } else if (n > 0x0000ffffffffffffULL) {
+    buf[0] = 7;
+    buf[1] = (n >> 56) & 0xff;
+    buf[2] = (n >> 40) & 0xff;
+    buf[3] = (n >> 32) & 0xff;
+    buf[4] = (n >> 24) & 0xff;
+    buf[5] = (n >> 16) & 0xff;
+    buf[6] = (n >> 8) & 0xff;
+    buf[7] = n & 0xff;
+    return 8;
+  } else if (n > 0x000000ffffffffffULL) {
+    buf[0] = 6;
+    buf[1] = (n >> 40) & 0xff;
+    buf[2] = (n >> 32) & 0xff;
+    buf[3] = (n >> 24) & 0xff;
+    buf[4] = (n >> 16) & 0xff;
+    buf[5] = (n >> 8) & 0xff;
+    buf[6] = n & 0xff;
+    return 7;
+  } else if (n > 0x00000000ffffffffULL) {
+    buf[0] = 5;
+    buf[1] = (n >> 32) & 0xff;
+    buf[2] = (n >> 24) & 0xff;
+    buf[3] = (n >> 16) & 0xff;
+    buf[4] = (n >> 8) & 0xff;
+    buf[5] = n & 0xff;
+    return 6;
+  } else if (n > 0x0000000000ffffffULL) {
+    buf[0] = 4;
+    buf[1] = (n >> 24) & 0xff;
+    buf[2] = (n >> 16) & 0xff;
+    buf[3] = (n >> 8) & 0xff;
+    buf[4] = n & 0xff;
+    return 5;
+  } else if (n > 0x000000000000ffffULL) {
+    buf[0] = 3;
+    buf[1] = (n >> 16) & 0xff;
+    buf[2] = (n >> 8) & 0xff;
+    buf[3] = n & 0xff;
+    return 4;
+  } else if (n > 0x00000000000000ffULL) {
+    buf[0] = 2;
+    buf[1] = (n >> 8) & 0xff;
+    buf[2] = n & 0xff;
+    return 3;
+  } else {
+    buf[0] = 1;
+    buf[1] = n & 0xff;
+    return 2;
+  }
+}
+
+static void test_left_encode(void) {
+  static const struct {
+    const char *name;
+    uint64_t val;
+    uint8_t exp[9];
+    size_t exp_len;
+  } tests[] = {{
+    .name = "zero",
+    .val = 0,
+    .exp = { 0x01, 0x00 },
+    .exp_len = 2,
+  }, {
+    .name = "120",
+    .val = 120,
+    .exp = { 0x01, 0x78 },
+    .exp_len = 2,
+  }, {
+    .name = "256",
+    .val = 256,
+    .exp = { 0x02, 0x01, 0x00 },
+    .exp_len = 3,
+  }, {
+    .name = "65535",
+    .val = 65535,
+    .exp = { 0x02, 0xff, 0xff },
+    .exp_len = 3,
+  }, {
+    .name = "65536",
+    .val = 65536,
+    .exp = { 0x03, 0x01, 0x00, 0x00 },
+    .exp_len = 4,
+  }, {
+    .name = "0xff00ff",
+    .val = 0xff00ff,
+    .exp = { 0x03, 0xff, 0x00, 0xff },
+    .exp_len = 4,
+  }, {
+    .name = "0x01000000",
+    .val = 0x01000000,
+    .exp = { 0x04, 0x01, 0x00, 0x00, 0x00 },
+    .exp_len = 5,
+  }, {
+    .name = "0xffffffff",
+    .val = 0xffffffff,
+    .exp = { 0x04, 0xff, 0xff, 0xff, 0xff },
+    .exp_len = 5,
+  }, {
+    .name = "0x0100000000",
+    .val = 0x0100000000,
+    .exp = { 0x05, 0x01, 0x00, 0x00, 0x00, 0x00 },
+    .exp_len = 6,
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    uint8_t got[9];
+    const size_t got_len = left_encode(got, tests[i].val);
+
+    // check length and data
+    if (got_len != tests[i].exp_len) {
+      fprintf(stderr, "test_left_encode(\"%s\") length check failed: got %zu, exp %zu:\n", tests[i].name, got_len, tests[i].exp_len);
+    } else if (memcmp(got, tests[i].exp, got_len)) {
+      fprintf(stderr, "test_left_encode(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, got_len);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, got_len);
+    }
+  }
+}
+
+// Write prefix for encode_string() to the given buffer.  Accepts the
+// length of the string, in bytes.
+//
+// Returns the length of the prefix, in bytes.
+static inline size_t encode_string_prefix(uint8_t buf[static 9], const size_t num_bytes) {
+  return left_encode(buf, (uint64_t) num_bytes << 3);
+}
+
+static void test_encode_string_prefix(void) {
+  static const struct {
+    const char *name;
+    uint8_t val[256];
+    size_t val_len;
+    uint8_t exp[9];
+    size_t exp_len;
+  } tests[] = {{
+    .name = "empty",
+    .val = "",
+    .val_len = 0,
+    .exp = { 0x01, 0x00 },
+    .exp_len = 2,
+  }, {
+    .name = "4",
+    .val = "asdf",
+    .val_len = 4,
+    .exp = { 0x01, 0x20 },
+    .exp_len = 2,
+  }, {
+    .name = "31",
+    .val = "asdfasdfasdfasdfasdfasdfasdfasd",
+    .val_len = 31,
+    .exp = { 0x01, 0xf8 },
+    .exp_len = 2,
+  }, {
+    .name = "32",
+    .val = "asdfasdfasdfasdfasdfasdfasdfasdf",
+    .val_len = 32,
+    .exp = { 0x02, 0x01, 0x00 },
+    .exp_len = 3,
+  }, {
+    .name = "33",
+    .val = "asdfasdfasdfasdfasdfasdfasdfasdfa",
+    .val_len = 33,
+    .exp = { 0x02, 0x01, 0x08 },
+    .exp_len = 3,
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    uint8_t got[9];
+    const size_t got_len = encode_string_prefix(got, tests[i].val_len);
+
+    // check length and data
+    if (got_len != tests[i].exp_len) {
+      fprintf(stderr, "test_encode_string_prefix(\"%s\") length check failed: got %zu, exp %zu:\n", tests[i].name, got_len, tests[i].exp_len);
+    } else if (memcmp(got, tests[i].exp, got_len)) {
+      fprintf(stderr, "test_encode_string_prefix(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, got_len);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, got_len);
+    }
+  }
+}
+
+typedef struct {
+  size_t prefix_len; // length of bytepad prefix, in bytes
+  size_t pad_len; // number of padding bytes after prefix and data
+} bytepad_lens_t;
+
+// write bytepad() prefix to buffer, then return structure containing
+// the length of the prefix, in bytes, and the total number of
+static inline bytepad_lens_t bytepad_prefix(uint8_t buf[static 9], const size_t data_len, const size_t width) {
+  const size_t prefix_len = left_encode(buf, width);
+  const size_t total_len = prefix_len + data_len;
+  const size_t padded_len = (total_len / width + ((total_len % width) ? 1 : 0)) * width;
+
+  return (bytepad_lens_t) {
+    .prefix_len = prefix_len,
+    .pad_len = padded_len - total_len,
+  };
+}
+
+static void test_bytepad_prefix(void) {
+  static const struct {
+    const char *name;
+    size_t data_len, width;
+    uint8_t exp_buf[9];
+    bytepad_lens_t exp_lens;
+  } tests[] = {{
+    .name = "0-10",
+    .data_len = 0,
+    .width = 10,
+    .exp_buf = { 0x01, 0x0a },
+    .exp_lens = { 2, 8 },
+  }, {
+    .name = "8-10",
+    .data_len = 8,
+    .width = 10,
+    .exp_buf = { 0x01, 0x0a },
+    .exp_lens = { 2, 0 },
+  }, {
+    .name = "9-10",
+    .data_len = 9,
+    .width = 10,
+    .exp_buf = { 0x01, 0x0a },
+    .exp_lens = { 2, 9 },
+  }, {
+    .name = "10-10",
+    .data_len = 10,
+    .width = 10,
+    .exp_buf = { 0x01, 0x0a },
+    .exp_lens = { 2, 8 },
+  }, {
+    .name = "11-10",
+    .data_len = 11,
+    .width = 10,
+    .exp_buf = { 0x01, 0x0a },
+    .exp_lens = { 2, 7 },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    uint8_t got_buf[9];
+    const bytepad_lens_t got_lens = bytepad_prefix(got_buf, tests[i].data_len, tests[i].width);
+
+    // check prefix length and data
+    if (got_lens.prefix_len != tests[i].exp_lens.prefix_len || got_lens.pad_len != tests[i].exp_lens.pad_len) {
+      fprintf(stderr, "test_bytepad_prefix(\"%s\") length check failed:\n  got: { %zu, %zu }\n  exp: { %zu, %zu }\n", tests[i].name, got_lens.prefix_len, got_lens.pad_len, tests[i].exp_lens.prefix_len, tests[i].exp_lens.pad_len);
+    } else if (memcmp(got_buf, tests[i].exp_buf, got_lens.prefix_len)) {
+      fprintf(stderr, "test_bytepad_prefix(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got_buf, got_lens.prefix_len);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp_buf, got_lens.prefix_len);
+    }
+  }
+}
+
+void cshake128(
+  const uint8_t * const nist_name, const size_t nist_name_len,
+  const uint8_t * const domain, const size_t domain_len,
+  const uint8_t *msg, const size_t msg_len,
+  uint8_t * const dst, const size_t dst_len
+) {
+  if (nist_name_len || domain_len) {
+    // TODO
+  } else {
+    // without nist prefix and domain, cshake128 is equivalent to
+    // shake128()
+
+    // init
+    sha3_xof_t xof;
+    shake128_xof_init(&xof);
+
+    // absorb (note: ignoring error message here)
+    (void) shake128_xof_absorb(&xof, msg, msg_len);
+
+    // squeeze
+    shake128_xof_squeeze(&xof, dst, dst_len);
+  }
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -1725,6 +2016,9 @@ int main(void) {
   test_shake128_xof_once();
   test_shake256_xof();
   test_shake256_xof_once();
+  test_left_encode();
+  test_encode_string_prefix();
+  test_bytepad_prefix();
   printf("ok\n");
 }
 
