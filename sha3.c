@@ -264,30 +264,24 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
   return true;
 }
 
-static inline _Bool xof_absorb_done(sha3_xof_t * const xof, const size_t rate) {
-  // check state
-  if (xof->squeezing) {
-    return false;
-  }
-
+static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
   xof->a.u8[xof->num_bytes] ^= 0x1f;
   xof->a.u8[rate - 1] ^= 0x80;
 
-  // permute, switch to squeeze mode
+  // permute
   permute(xof->a.u64);
+
+  // switch to squeeze mode
   xof->num_bytes = 0;
   xof->squeezing = true;
-
-  // return success
-  return true;
 }
 
-static inline _Bool xof_squeeze(sha3_xof_t * const xof, const size_t rate, uint8_t * const dst, const size_t dst_len) {
+static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, uint8_t * const dst, const size_t dst_len) {
   // check state
   if (!xof->squeezing) {
-    return false;
+    xof_absorb_done(xof, rate);
   }
 
   for (size_t i = 0; i < dst_len; i++) {
@@ -297,9 +291,6 @@ static inline _Bool xof_squeeze(sha3_xof_t * const xof, const size_t rate, uint8
       xof->num_bytes = 0;
     }
   }
-
-  // return success
-  return true;
 }
 
 #define SHAKE128_XOF_RATE (200 - 2 * 16)
@@ -312,12 +303,8 @@ _Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const
   return xof_absorb(xof, SHAKE128_XOF_RATE, m, len);
 }
 
-_Bool shake128_xof_absorb_done(sha3_xof_t * const xof) {
-  return xof_absorb_done(xof, SHAKE128_XOF_RATE);
-}
-
-_Bool shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  return xof_squeeze(xof, SHAKE128_XOF_RATE, dst, dst_len);
+void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
+  xof_squeeze(xof, SHAKE128_XOF_RATE, dst, dst_len);
 }
 
 #define SHAKE256_XOF_RATE (200 - 2 * 32)
@@ -330,12 +317,8 @@ _Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const
   return xof_absorb(xof, SHAKE256_XOF_RATE, m, len);
 }
 
-_Bool shake256_xof_absorb_done(sha3_xof_t * const xof) {
-  return xof_absorb_done(xof, SHAKE256_XOF_RATE);
-}
-
-_Bool shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  return xof_squeeze(xof, SHAKE256_XOF_RATE, dst, dst_len);
+void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
+  xof_squeeze(xof, SHAKE256_XOF_RATE, dst, dst_len);
 }
 
 #ifdef SHA3_TEST
@@ -1346,18 +1329,9 @@ static void test_shake128_xof(void) {
         }
       }
 
-      // finish absorbing
-      if (!shake128_xof_absorb_done(&xof)) {
-        fprintf(stderr, "test_shake128_xof(\"%s\", %zu) failed: shake128_xof_absorb_done()\n", tests[i].name, len);
-        return;
-      }
-
       // squeeze
       uint8_t got[16] = { 0 };
-      if (!shake128_xof_squeeze(&xof, got, sizeof(got))) {
-        fprintf(stderr, "test_shake128_xof(\"%s\", %zu) failed: shake128_xof_squeeze()\n", tests[i].name, len);
-        return;
-      }
+      shake128_xof_squeeze(&xof, got, sizeof(got));
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
@@ -1481,18 +1455,9 @@ static void test_shake256_xof(void) {
         }
       }
 
-      // finish absorbing
-      if (!shake256_xof_absorb_done(&xof)) {
-        fprintf(stderr, "test_shake256_xof(\"%s\", %zu) failed: shake256_xof_absorb_done()\n", tests[i].name, len);
-        return;
-      }
-
       // squeeze
       uint8_t got[32] = { 0 };
-      if (!shake256_xof_squeeze(&xof, got, sizeof(got))) {
-        fprintf(stderr, "test_shake256_xof(\"%s\", %zu) failed: shake256_xof_squeeze()\n", tests[i].name, len);
-        return;
-      }
+      shake256_xof_squeeze(&xof, got, sizeof(got));
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {

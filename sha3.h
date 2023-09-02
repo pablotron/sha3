@@ -28,13 +28,11 @@ void shake256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
 
 void shake128_xof_init(sha3_xof_t * const xof);
 _Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len);
-_Bool shake128_xof_absorb_done(sha3_xof_t * const xof);
-_Bool shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
+void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
 
 void shake256_xof_init(sha3_xof_t * const xof);
 _Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len);
-_Bool shake256_xof_absorb_done(sha3_xof_t * const xof);
-_Bool shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
+void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
 
 #ifdef __cplusplus
 }

@@ -15,21 +15,11 @@ static void run_shake128_xof(const uint8_t *msg, const size_t msg_len, const siz
     exit(-1);
   }
 
-  // finalize
-  if (!shake128_xof_absorb_done(&xof)) {
-    fprintf(stderr, "Error: shake128_xof_absorb_done() failed\n");
-    exit(-1);
-  }
-
   // squeeze
   uint8_t buf[64];
   for (size_t i = 0; i < out_len; i += sizeof(buf)) {
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
-
-    if (!shake128_xof_squeeze(&xof, buf, len)) {
-      fprintf(stderr, "Error: shake128_xof_absorb_done() failed\n");
-      exit(-1);
-    }
+    shake128_xof_squeeze(&xof, buf, len);
 
     // print result
     for (size_t j = 0; j < len; j++) {
@@ -51,21 +41,11 @@ static void run_shake256_xof(const uint8_t * const msg, const size_t msg_len, co
     exit(-1);
   }
 
-  // finalize
-  if (!shake256_xof_absorb_done(&xof)) {
-    fprintf(stderr, "Error: shake256_xof_absorb_done() failed\n");
-    exit(-1);
-  }
-
   // squeeze
   uint8_t buf[64];
   for (size_t i = 0; i < out_len; i += sizeof(buf)) {
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
-
-    if (!shake256_xof_squeeze(&xof, buf, len)) {
-      fprintf(stderr, "Error: shake256_xof_absorb_done() failed\n");
-      exit(-1);
-    }
+    shake256_xof_squeeze(&xof, buf, len);
 
     // print result
     for (size_t j = 0; j < len; j++) {
