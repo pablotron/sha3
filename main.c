@@ -147,6 +147,6 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  fprintf(stderr, "Unknown algorithm: %s", argv[1]);
+  fprintf(stderr, "Unknown algorithm: %s\n", argv[1]);
   return -1;
 }
