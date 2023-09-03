@@ -14,7 +14,7 @@ $(EXAMPLE_APP): $(OBJS)
 	$(CC) -c $(CFLAGS) $<
 
 test:
-	$(CC) -o $(TEST_APP) -DSHA3_TEST sha3.c && $(TEST_APP)
+	$(CC) -o $(TEST_APP) $(CFLAGS) -DSHA3_TEST sha3.c && $(TEST_APP)
 
 clean:
 	$(RM) -f $(TEST_APP) $(EXAMPLE_APP) $(OBJS)
