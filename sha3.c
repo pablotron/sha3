@@ -484,24 +484,6 @@ static inline size_t encode_string_prefix(uint8_t buf[static 9], const size_t nu
 }
 
 typedef struct {
-  size_t prefix_len; // length of bytepad prefix, in bytes
-  size_t pad_len; // number of padding bytes after prefix and data
-} bytepad_lens_t;
-
-// write bytepad() prefix to buffer, then return structure containing
-// the length of the prefix, in bytes, and the total number of
-static inline bytepad_lens_t bytepad_prefix(uint8_t buf[static 9], const size_t data_len, const size_t width) {
-  const size_t prefix_len = left_encode(buf, width);
-  const size_t total_len = prefix_len + data_len;
-  const size_t padded_len = (total_len / width + ((total_len % width) ? 1 : 0)) * width;
-
-  return (bytepad_lens_t) {
-    .prefix_len = prefix_len,
-    .pad_len = padded_len - total_len,
-  };
-}
-
-typedef struct {
   uint8_t prefix[9]; // bytepad prefix
   size_t prefix_len; // length of bytepad prefix, in bytes
   size_t pad_len; // number of padding bytes after prefix and data
@@ -2245,68 +2227,12 @@ static void test_encode_string_prefix(void) {
   }
 }
 
-static void test_bytepad_prefix(void) {
-  static const struct {
-    const char *name;
-    size_t data_len, width;
-    uint8_t exp_buf[9];
-    bytepad_lens_t exp_lens;
-  } tests[] = {{
-    .name = "0-10",
-    .data_len = 0,
-    .width = 10,
-    .exp_buf = { 0x01, 0x0a },
-    .exp_lens = { 2, 8 },
-  }, {
-    .name = "8-10",
-    .data_len = 8,
-    .width = 10,
-    .exp_buf = { 0x01, 0x0a },
-    .exp_lens = { 2, 0 },
-  }, {
-    .name = "9-10",
-    .data_len = 9,
-    .width = 10,
-    .exp_buf = { 0x01, 0x0a },
-    .exp_lens = { 2, 9 },
-  }, {
-    .name = "10-10",
-    .data_len = 10,
-    .width = 10,
-    .exp_buf = { 0x01, 0x0a },
-    .exp_lens = { 2, 8 },
-  }, {
-    .name = "11-10",
-    .data_len = 11,
-    .width = 10,
-    .exp_buf = { 0x01, 0x0a },
-    .exp_lens = { 2, 7 },
-  }};
-
-  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
-    uint8_t got_buf[9];
-    const bytepad_lens_t got_lens = bytepad_prefix(got_buf, tests[i].data_len, tests[i].width);
-
-    // check prefix length and data
-    if (got_lens.prefix_len != tests[i].exp_lens.prefix_len || got_lens.pad_len != tests[i].exp_lens.pad_len) {
-      fprintf(stderr, "test_bytepad_prefix(\"%s\") length check failed:\n  got: { %zu, %zu }\n  exp: { %zu, %zu }\n", tests[i].name, got_lens.prefix_len, got_lens.pad_len, tests[i].exp_lens.prefix_len, tests[i].exp_lens.pad_len);
-    } else if (memcmp(got_buf, tests[i].exp_buf, got_lens.prefix_len)) {
-      fprintf(stderr, "test_bytepad_prefix(\"%s\") failed, got:\n", tests[i].name);
-      dump_hex(stderr, got_buf, got_lens.prefix_len);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp_buf, got_lens.prefix_len);
-    }
-  }
-}
-
 static void test_bytepad(void) {
   static const struct {
     const char *name;
     size_t data_len, width;
     uint8_t exp_prefix[9];
     size_t exp_prefix_len, exp_pad_len;
-    bytepad_lens_t exp_lens;
   } tests[] = {{
     .name = "0-10",
     .data_len = 0,
@@ -2351,7 +2277,7 @@ static void test_bytepad(void) {
     if (got.prefix_len != tests[i].exp_prefix_len || got.pad_len != tests[i].exp_pad_len) {
       fprintf(stderr, "test_bytepad(\"%s\") length check failed:\n  got: { %zu, %zu }\n  exp: { %zu, %zu }\n", tests[i].name, got.prefix_len, got.pad_len, tests[i].exp_prefix_len, tests[i].exp_pad_len);
     } else if (memcmp(got.prefix, tests[i].exp_prefix, got.prefix_len)) {
-      fprintf(stderr, "test_bytepad_prefix(\"%s\") failed, got:\n", tests[i].name);
+      fprintf(stderr, "test_bytepad(\"%s\") failed, got:\n", tests[i].name);
       dump_hex(stderr, got.prefix, got.prefix_len);
 
       fprintf(stderr, "exp:\n");
@@ -2538,7 +2464,6 @@ int main(void) {
   test_left_encode();
   test_right_encode();
   test_encode_string_prefix();
-  test_bytepad_prefix();
   test_bytepad();
   test_cshake128();
   test_cshake256();
