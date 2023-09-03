@@ -10,6 +10,9 @@
 // 64-bit rotate left
 #define ROL(v, n) (((v) << (n)) | ((v) >> (64-(n))))
 
+// minimum of two values
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 static inline void theta(uint64_t a[static 25]) {
   const uint64_t c[5] = {
     a[0] ^ a[5] ^ a[10] ^ a[15] ^ a[20],
@@ -498,6 +501,26 @@ static inline bytepad_lens_t bytepad_prefix(uint8_t buf[static 9], const size_t 
   };
 }
 
+typedef struct {
+  uint8_t prefix[9]; // bytepad prefix
+  size_t prefix_len; // length of bytepad prefix, in bytes
+  size_t pad_len; // number of padding bytes after prefix and data
+} bytepad_t;
+
+// write bytepad() prefix to buffer, then return structure containing
+// the length of the prefix, in bytes, and the total number of
+static inline bytepad_t bytepad(const size_t data_len, const size_t width) {
+  bytepad_t r = { { 0 }, 0, 0 };
+  const size_t prefix_len = left_encode(r.prefix, width);
+  const size_t total_len = prefix_len + data_len;
+  const size_t padded_len = (total_len / width + ((total_len % width) ? 1 : 0)) * width;
+
+  r.prefix_len = prefix_len;
+  r.pad_len = padded_len - total_len;
+
+  return r;
+}
+
 #define CSHAKE128_XOF_RATE (200 - 2 * 16)
 #define CSHAKE128_XOF_PAD 0x04
 
@@ -532,27 +555,29 @@ void cshake128_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
   const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len;
 
   // build bytepad prefix
-  uint8_t bytepad_buf[9] = { 0 };
-  const bytepad_lens_t lens = bytepad_prefix(bytepad_buf, raw_len, CSHAKE128_XOF_RATE);
+  const bytepad_t bp = bytepad(raw_len, CSHAKE128_XOF_RATE);
 
   // init xof
   xof_init(xof);
 
-  // absorb cshake prefix and padding
-  (void) cshake128_xof_absorb(xof, bytepad_buf, lens.prefix_len);
+  // absorb bytepad prefix
+  (void) cshake128_xof_absorb(xof, bp.prefix, bp.prefix_len);
 
+  // absorb name string
   (void) cshake128_xof_absorb(xof, name_buf, name_len);
   if (params.name_len > 0) {
     (void) cshake128_xof_absorb(xof, params.name, params.name_len);
   }
 
+  // absorb custom string
   (void) cshake128_xof_absorb(xof, custom_buf, custom_len);
   if (params.custom_len > 0) {
     (void) cshake128_xof_absorb(xof, params.custom, params.custom_len);
   }
 
-  for (size_t ofs = 0; ofs < lens.pad_len; ofs += sizeof(PAD)) {
-    const size_t len = (lens.pad_len - ofs) < sizeof(PAD) ? lens.pad_len - ofs : sizeof(PAD);
+  // absorb padding
+  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
+    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
     (void) cshake128_xof_absorb(xof, PAD, len);
   }
 }
@@ -613,27 +638,29 @@ void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
   const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len;
 
   // build bytepad prefix
-  uint8_t bytepad_buf[9] = { 0 };
-  const bytepad_lens_t lens = bytepad_prefix(bytepad_buf, raw_len, CSHAKE256_XOF_RATE);
+  const bytepad_t bp = bytepad(raw_len, CSHAKE256_XOF_RATE);
 
   // init xof
   xof_init(xof);
 
-  // absorb cshake prefix and padding
-  (void) cshake256_xof_absorb(xof, bytepad_buf, lens.prefix_len);
+  // absorb bytepad prefix
+  (void) cshake256_xof_absorb(xof, bp.prefix, bp.prefix_len);
 
+  // absorb name string
   (void) cshake256_xof_absorb(xof, name_buf, name_len);
   if (params.name_len > 0) {
     (void) cshake256_xof_absorb(xof, params.name, params.name_len);
   }
 
+  // absorb custom string
   (void) cshake256_xof_absorb(xof, custom_buf, custom_len);
   if (params.custom_len > 0) {
     (void) cshake256_xof_absorb(xof, params.custom, params.custom_len);
   }
 
-  for (size_t ofs = 0; ofs < lens.pad_len; ofs += sizeof(PAD)) {
-    const size_t len = (lens.pad_len - ofs) < sizeof(PAD) ? lens.pad_len - ofs : sizeof(PAD);
+  // absorb padding
+  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
+    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
     (void) cshake256_xof_absorb(xof, PAD, len);
   }
 }
@@ -1661,7 +1688,7 @@ static void test_shake128_xof(void) {
 
       // absorb
       for (size_t ofs = 0; ofs < tests[i].len; ofs += len) {
-        const size_t absorb_len = (tests[i].len - ofs < len) ? tests[i].len - ofs : len;
+        const size_t absorb_len = MIN(tests[i].len - ofs, len);
         if (!shake128_xof_absorb(&xof, tests[i].msg + ofs, absorb_len)) {
           fprintf(stderr, "test_shake128_xof(\"%s\", %zu) failed: shake128_xof_absorb()\n", tests[i].name, len);
           return;
@@ -1886,7 +1913,7 @@ static void test_shake256_xof(void) {
 
       // absorb
       for (size_t ofs = 0; ofs < tests[i].len; ofs += len) {
-        const size_t absorb_len = (tests[i].len - ofs < len) ? tests[i].len - ofs : len;
+        const size_t absorb_len = MIN(tests[i].len - ofs, len);
         if (!shake256_xof_absorb(&xof, tests[i].msg + ofs, absorb_len)) {
           fprintf(stderr, "test_shake256_xof(\"%s\", %zu) failed: shake256_xof_absorb()\n", tests[i].name, len);
           return;
@@ -2273,6 +2300,66 @@ static void test_bytepad_prefix(void) {
   }
 }
 
+static void test_bytepad(void) {
+  static const struct {
+    const char *name;
+    size_t data_len, width;
+    uint8_t exp_prefix[9];
+    size_t exp_prefix_len, exp_pad_len;
+    bytepad_lens_t exp_lens;
+  } tests[] = {{
+    .name = "0-10",
+    .data_len = 0,
+    .width = 10,
+    .exp_prefix = { 0x01, 0x0a },
+    .exp_prefix_len = 2,
+    .exp_pad_len = 8,
+  }, {
+    .name = "8-10",
+    .data_len = 8,
+    .width = 10,
+    .exp_prefix = { 0x01, 0x0a },
+    .exp_prefix_len = 2,
+    .exp_pad_len = 0,
+  }, {
+    .name = "9-10",
+    .data_len = 9,
+    .width = 10,
+    .exp_prefix = { 0x01, 0x0a },
+    .exp_prefix_len = 2,
+    .exp_pad_len = 9,
+  }, {
+    .name = "10-10",
+    .data_len = 10,
+    .width = 10,
+    .exp_prefix = { 0x01, 0x0a },
+    .exp_prefix_len = 2,
+    .exp_pad_len = 8,
+  }, {
+    .name = "11-10",
+    .data_len = 11,
+    .width = 10,
+    .exp_prefix = { 0x01, 0x0a },
+    .exp_prefix_len = 2,
+    .exp_pad_len = 7,
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    const bytepad_t got = bytepad(tests[i].data_len, tests[i].width);
+
+    // check prefix length and data
+    if (got.prefix_len != tests[i].exp_prefix_len || got.pad_len != tests[i].exp_pad_len) {
+      fprintf(stderr, "test_bytepad(\"%s\") length check failed:\n  got: { %zu, %zu }\n  exp: { %zu, %zu }\n", tests[i].name, got.prefix_len, got.pad_len, tests[i].exp_prefix_len, tests[i].exp_pad_len);
+    } else if (memcmp(got.prefix, tests[i].exp_prefix, got.prefix_len)) {
+      fprintf(stderr, "test_bytepad_prefix(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got.prefix, got.prefix_len);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp_prefix, got.prefix_len);
+    }
+  }
+}
+
 static void test_cshake128(void) {
   static const struct {
     const char *test_name; // test name
@@ -2452,6 +2539,7 @@ int main(void) {
   test_right_encode();
   test_encode_string_prefix();
   test_bytepad_prefix();
+  test_bytepad();
   test_cshake128();
   test_cshake256();
   printf("ok\n");
