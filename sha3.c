@@ -897,6 +897,68 @@ void kmac256_xof_once(const kmac_params_t params, const uint8_t * const src, con
   kmac256_xof_squeeze(&xof, dst, dst_len);
 }
 
+static inline void tuplehash128_init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) {
+  static const uint8_t NAME[] = { 'T', 'u', 'p', 'l', 'e', 'H', 'a', 's', 'h' };
+
+  // build cshake128 params
+  const cshake_params_t cshake_params = {
+    .name = NAME,
+    .name_len = sizeof(NAME),
+    .custom = params.custom,
+    .custom_len = params.custom_len,
+  };
+
+  // init xof
+  cshake128_xof_init(xof, cshake_params);
+
+  // absorb tuples
+  // FIXME: length counter in 800-185 is wrong here
+  for (size_t i = 0; i < params.num_strs; i++) {
+    // absorb length
+    uint8_t buf[9] = { 0 };
+    const size_t buf_len = encode_string_prefix(buf, params.strs[i].len);
+    (void) cshake128_xof_absorb(xof, buf, buf_len);
+
+    // absorb content
+    if (params.strs[i].len > 0) {
+      (void) cshake128_xof_absorb(xof, params.strs[i].ptr, params.strs[i].len);
+    }
+  }
+
+  // build output length suffix
+  uint8_t suffix_buf[9] = { 0 };
+  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
+
+  // absorb output length suffix
+  (void) cshake128_xof_absorb(xof, suffix_buf, suffix_buf_len);
+}
+
+void tuplehash128(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
+  // init
+  sha3_xof_t xof;
+  tuplehash128_init(&xof, params, dst_len);
+
+  // squeeze
+  cshake128_xof_squeeze(&xof, dst, dst_len);
+}
+
+void tuplehash128_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params) {
+  tuplehash128_init(xof, params, 0);
+}
+
+void tuplehash128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
+  cshake128_xof_squeeze(xof, dst, dst_len);
+}
+
+void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
+  // init xof
+  sha3_xof_t xof;
+  tuplehash128_xof_init(&xof, params);
+
+  // squeeze
+  cshake128_xof_squeeze(&xof, dst, dst_len);
+}
+
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
 
@@ -3125,6 +3187,96 @@ static void test_kmac256_xof(void) {
   }
 }
 
+static void test_tuplehash128(void) {
+  static const struct {
+    const char *name; // test name
+    const uint8_t data[256]; // string data
+    const size_t pairs[10]; // string ofs/len pairs
+    const size_t num_strs; // number of strings
+    const uint8_t custom[256]; // custom name
+    const size_t custom_len; // custom name length
+    const uint8_t exp[32]; // expected hash
+  } tests[] = {{
+    // https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/TupleHash_samples.pdf
+    .name = "TupleHash Sample #1",
+    .data = { 0x00, 0x01, 0x02, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15 },
+    .pairs = {
+      0, 3,
+      3, 6,
+    },
+    .num_strs = 2,
+    .custom = "",
+    .custom_len = 0,
+    .exp = {
+      0xC5, 0xD8, 0x78, 0x6C, 0x1A, 0xFB, 0x9B, 0x82, 0x11, 0x1A, 0xB3, 0x4B, 0x65, 0xB2, 0xC0, 0x04,
+      0x8F, 0xA6, 0x4E, 0x6D, 0x48, 0xE2, 0x63, 0x26, 0x4C, 0xE1, 0x70, 0x7D, 0x3F, 0xFC, 0x8E, 0xD1,
+    },
+  }, {
+    .name = "TupleHash Sample #2",
+    .data = { 0x00, 0x01, 0x02, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15 },
+    .pairs = {
+      0, 3,
+      3, 6,
+    },
+    .num_strs = 2,
+    .custom = "My Tuple App",
+    .custom_len = 12,
+    .exp = {
+      0x75, 0xCD, 0xB2, 0x0F, 0xF4, 0xDB, 0x11, 0x54, 0xE8, 0x41, 0xD7, 0x58, 0xE2, 0x41, 0x60, 0xC5,
+      0x4B, 0xAE, 0x86, 0xEB, 0x8C, 0x13, 0xE7, 0xF5, 0xF4, 0x0E, 0xB3, 0x55, 0x88, 0xE9, 0x6D, 0xFB,
+    },
+  }, {
+    .name = "TupleHash Sample #3",
+    .data = {
+      0x00, 0x01, 0x02,
+      0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+    },
+    .pairs = {
+      0, 3,
+      3, 6,
+      9, 9,
+    },
+    .num_strs = 3,
+    .custom = "My Tuple App",
+    .custom_len = 12,
+    .exp = {
+      0xE6, 0x0F, 0x20, 0x2C, 0x89, 0xA2, 0x63, 0x1E, 0xDA, 0x8D, 0x4C, 0x58, 0x8C, 0xA5, 0xFD, 0x07,
+      0xF3, 0x9E, 0x51, 0x51, 0x99, 0x8D, 0xEC, 0xCF, 0x97, 0x3A, 0xDB, 0x38, 0x04, 0xBB, 0x6E, 0x84, 
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    // build strings
+    tuplehash_str_t strs[10] = { 0 };
+    for (size_t j = 0; j < tests[i].num_strs; j++) {
+      strs[j].ptr = tests[i].data + tests[i].pairs[2 * j];
+      strs[j].len = tests[i].pairs[2 * j + 1];
+    }
+
+    // build params
+    const tuplehash_params_t params = {
+      .strs = strs,
+      .num_strs = tests[i].num_strs,
+      .custom = tests[i].custom,
+      .custom_len = tests[i].custom_len,
+    };
+
+    // run
+    uint8_t got[32];
+    tuplehash128(params, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_tuplehash128(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, 32);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, 32);
+    }
+  }
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -3152,6 +3304,7 @@ int main(void) {
   test_kmac256();
   test_kmac128_xof();
   test_kmac256_xof();
+  test_tuplehash128();
   printf("ok\n");
 }
 
