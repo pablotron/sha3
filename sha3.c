@@ -408,6 +408,70 @@ static inline size_t left_encode(uint8_t buf[static 9], const uint64_t n) {
   }
 }
 
+// NIST SP 800-105 utility function.
+static inline size_t right_encode(uint8_t buf[static 9], const uint64_t n) {
+  if (n > 0x00ffffffffffffffULL) {
+    buf[0] = (n >> 56) & 0xff;
+    buf[1] = (n >> 40) & 0xff;
+    buf[2] = (n >> 32) & 0xff;
+    buf[3] = (n >> 24) & 0xff;
+    buf[4] = (n >> 16) & 0xff;
+    buf[5] = (n >> 8) & 0xff;
+    buf[6] = n & 0xff;
+    buf[7] = 8;
+    return 9;
+  } else if (n > 0x0000ffffffffffffULL) {
+    buf[0] = (n >> 56) & 0xff;
+    buf[1] = (n >> 40) & 0xff;
+    buf[2] = (n >> 32) & 0xff;
+    buf[3] = (n >> 24) & 0xff;
+    buf[4] = (n >> 16) & 0xff;
+    buf[5] = (n >> 8) & 0xff;
+    buf[6] = n & 0xff;
+    buf[7] = 7;
+    return 8;
+  } else if (n > 0x000000ffffffffffULL) {
+    buf[0] = (n >> 40) & 0xff;
+    buf[1] = (n >> 32) & 0xff;
+    buf[2] = (n >> 24) & 0xff;
+    buf[3] = (n >> 16) & 0xff;
+    buf[4] = (n >> 8) & 0xff;
+    buf[5] = n & 0xff;
+    buf[6] = 6;
+    return 7;
+  } else if (n > 0x00000000ffffffffULL) {
+    buf[0] = (n >> 32) & 0xff;
+    buf[1] = (n >> 24) & 0xff;
+    buf[2] = (n >> 16) & 0xff;
+    buf[3] = (n >> 8) & 0xff;
+    buf[4] = n & 0xff;
+    buf[5] = 5;
+    return 6;
+  } else if (n > 0x0000000000ffffffULL) {
+    buf[0] = (n >> 24) & 0xff;
+    buf[1] = (n >> 16) & 0xff;
+    buf[2] = (n >> 8) & 0xff;
+    buf[3] = n & 0xff;
+    buf[4] = 4;
+    return 5;
+  } else if (n > 0x000000000000ffffULL) {
+    buf[0] = (n >> 16) & 0xff;
+    buf[1] = (n >> 8) & 0xff;
+    buf[2] = n & 0xff;
+    buf[3] = 3;
+    return 4;
+  } else if (n > 0x00000000000000ffULL) {
+    buf[0] = (n >> 8) & 0xff;
+    buf[1] = n & 0xff;
+    buf[2] = 2;
+    return 3;
+  } else {
+    buf[0] = n & 0xff;
+    buf[1] = 1;
+    return 2;
+  }
+}
+
 // Write prefix for encode_string() to the given buffer.  Accepts the
 // length of the string, in bytes.
 //
@@ -2028,6 +2092,76 @@ static void test_left_encode(void) {
   }
 }
 
+static void test_right_encode(void) {
+  static const struct {
+    const char *name;
+    uint64_t val;
+    uint8_t exp[9];
+    size_t exp_len;
+  } tests[] = {{
+    .name = "zero",
+    .val = 0,
+    .exp = { 0x00, 0x01 },
+    .exp_len = 2,
+  }, {
+    .name = "120",
+    .val = 120,
+    .exp = { 0x78, 0x01 },
+    .exp_len = 2,
+  }, {
+    .name = "256",
+    .val = 256,
+    .exp = { 0x01, 0x00, 0x02 },
+    .exp_len = 3,
+  }, {
+    .name = "65535",
+    .val = 65535,
+    .exp = { 0xff, 0xff, 0x02 },
+    .exp_len = 3,
+  }, {
+    .name = "65536",
+    .val = 65536,
+    .exp = { 0x01, 0x00, 0x00, 0x03 },
+    .exp_len = 4,
+  }, {
+    .name = "0xff00ff",
+    .val = 0xff00ff,
+    .exp = { 0xff, 0x00, 0xff, 0x03 },
+    .exp_len = 4,
+  }, {
+    .name = "0x01000000",
+    .val = 0x01000000,
+    .exp = { 0x01, 0x00, 0x00, 0x00, 0x04 },
+    .exp_len = 5,
+  }, {
+    .name = "0xffffffff",
+    .val = 0xffffffff,
+    .exp = { 0xff, 0xff, 0xff, 0xff, 0x04 },
+    .exp_len = 5,
+  }, {
+    .name = "0x0100000000",
+    .val = 0x0100000000,
+    .exp = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x05 },
+    .exp_len = 6,
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    uint8_t got[9];
+    const size_t got_len = right_encode(got, tests[i].val);
+
+    // check length and data
+    if (got_len != tests[i].exp_len) {
+      fprintf(stderr, "test_right_encode(\"%s\") length check failed: got %zu, exp %zu:\n", tests[i].name, got_len, tests[i].exp_len);
+    } else if (memcmp(got, tests[i].exp, got_len)) {
+      fprintf(stderr, "test_right_encode(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, got_len);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, got_len);
+    }
+  }
+}
+
 static void test_encode_string_prefix(void) {
   static const struct {
     const char *name;
@@ -2315,6 +2449,7 @@ int main(void) {
   test_shake256_xof();
   test_shake256_xof_once();
   test_left_encode();
+  test_right_encode();
   test_encode_string_prefix();
   test_bytepad_prefix();
   test_cshake128();
