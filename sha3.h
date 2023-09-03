@@ -69,6 +69,11 @@ _Bool kmac128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, cons
 void kmac128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
 void kmac128_xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
 
+void kmac256_xof_init(sha3_xof_t * const xof, const kmac_params_t params);
+_Bool kmac256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len);
+void kmac256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
+void kmac256_xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
