@@ -87,10 +87,15 @@ typedef struct {
 } tuplehash_params_t;
 
 void tuplehash128(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
+void tuplehash256(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
 void tuplehash128_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params);
 void tuplehash128_xof_squeeze(sha3_xof_t * const xof, uint8_t *dst, const size_t dst_len);
 void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
+
+void tuplehash256_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params);
+void tuplehash256_xof_squeeze(sha3_xof_t * const xof, uint8_t *dst, const size_t dst_len);
+void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
 #ifdef __cplusplus
 }

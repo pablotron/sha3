@@ -959,6 +959,68 @@ void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t * const dst,
   cshake128_xof_squeeze(&xof, dst, dst_len);
 }
 
+static inline void tuplehash256_init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) {
+  static const uint8_t NAME[] = { 'T', 'u', 'p', 'l', 'e', 'H', 'a', 's', 'h' };
+
+  // build cshake256 params
+  const cshake_params_t cshake_params = {
+    .name = NAME,
+    .name_len = sizeof(NAME),
+    .custom = params.custom,
+    .custom_len = params.custom_len,
+  };
+
+  // init xof
+  cshake256_xof_init(xof, cshake_params);
+
+  // absorb tuples
+  // FIXME: length counter in 800-185 is wrong here
+  for (size_t i = 0; i < params.num_strs; i++) {
+    // absorb length
+    uint8_t buf[9] = { 0 };
+    const size_t buf_len = encode_string_prefix(buf, params.strs[i].len);
+    (void) cshake256_xof_absorb(xof, buf, buf_len);
+
+    // absorb content
+    if (params.strs[i].len > 0) {
+      (void) cshake256_xof_absorb(xof, params.strs[i].ptr, params.strs[i].len);
+    }
+  }
+
+  // build output length suffix
+  uint8_t suffix_buf[9] = { 0 };
+  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
+
+  // absorb output length suffix
+  (void) cshake256_xof_absorb(xof, suffix_buf, suffix_buf_len);
+}
+
+void tuplehash256(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
+  // init
+  sha3_xof_t xof;
+  tuplehash256_init(&xof, params, dst_len);
+
+  // squeeze
+  cshake256_xof_squeeze(&xof, dst, dst_len);
+}
+
+void tuplehash256_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params) {
+  tuplehash256_init(xof, params, 0);
+}
+
+void tuplehash256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
+  cshake256_xof_squeeze(xof, dst, dst_len);
+}
+
+void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
+  // init xof
+  sha3_xof_t xof;
+  tuplehash256_xof_init(&xof, params);
+
+  // squeeze
+  cshake256_xof_squeeze(&xof, dst, dst_len);
+}
+
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
 
@@ -3277,6 +3339,102 @@ static void test_tuplehash128(void) {
   }
 }
 
+static void test_tuplehash256(void) {
+  static const struct {
+    const char *name; // test name
+    const uint8_t data[256]; // string data
+    const size_t pairs[10]; // string ofs/len pairs
+    const size_t num_strs; // number of strings
+    const uint8_t custom[256]; // custom name
+    const size_t custom_len; // custom name length
+    const uint8_t exp[64]; // expected hash
+  } tests[] = {{
+    // https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/TupleHash_samples.pdf
+    .name = "TupleHash Sample #4",
+    .data = { 0x00, 0x01, 0x02, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15 },
+    .pairs = {
+      0, 3,
+      3, 6,
+    },
+    .num_strs = 2,
+    .custom = "",
+    .custom_len = 0,
+    .exp = {
+      0xCF, 0xB7, 0x05, 0x8C, 0xAC, 0xA5, 0xE6, 0x68, 0xF8, 0x1A, 0x12, 0xA2, 0x0A, 0x21, 0x95, 0xCE,
+      0x97, 0xA9, 0x25, 0xF1, 0xDB, 0xA3, 0xE7, 0x44, 0x9A, 0x56, 0xF8, 0x22, 0x01, 0xEC, 0x60, 0x73,
+      0x11, 0xAC, 0x26, 0x96, 0xB1, 0xAB, 0x5E, 0xA2, 0x35, 0x2D, 0xF1, 0x42, 0x3B, 0xDE, 0x7B, 0xD4,
+      0xBB, 0x78, 0xC9, 0xAE, 0xD1, 0xA8, 0x53, 0xC7, 0x86, 0x72, 0xF9, 0xEB, 0x23, 0xBB, 0xE1, 0x94,
+    },
+  }, {
+    .name = "TupleHash Sample #5",
+    .data = { 0x00, 0x01, 0x02, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15 },
+    .pairs = {
+      0, 3,
+      3, 6,
+    },
+    .num_strs = 2,
+    .custom = "My Tuple App",
+    .custom_len = 12,
+    .exp = {
+      0x14, 0x7C, 0x21, 0x91, 0xD5, 0xED, 0x7E, 0xFD, 0x98, 0xDB, 0xD9, 0x6D, 0x7A, 0xB5, 0xA1, 0x16,
+      0x92, 0x57, 0x6F, 0x5F, 0xE2, 0xA5, 0x06, 0x5F, 0x3E, 0x33, 0xDE, 0x6B, 0xBA, 0x9F, 0x3A, 0xA1,
+      0xC4, 0xE9, 0xA0, 0x68, 0xA2, 0x89, 0xC6, 0x1C, 0x95, 0xAA, 0xB3, 0x0A, 0xEE, 0x1E, 0x41, 0x0B,
+      0x0B, 0x60, 0x7D, 0xE3, 0x62, 0x0E, 0x24, 0xA4, 0xE3, 0xBF, 0x98, 0x52, 0xA1, 0xD4, 0x36, 0x7E, 
+    },
+  }, {
+    .name = "TupleHash Sample #6",
+    .data = {
+      0x00, 0x01, 0x02,
+      0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+    },
+    .pairs = {
+      0, 3,
+      3, 6,
+      9, 9,
+    },
+    .num_strs = 3,
+    .custom = "My Tuple App",
+    .custom_len = 12,
+    .exp = {
+      0x45, 0x00, 0x0B, 0xE6, 0x3F, 0x9B, 0x6B, 0xFD, 0x89, 0xF5, 0x47, 0x17, 0x67, 0x0F, 0x69, 0xA9,
+      0xBC, 0x76, 0x35, 0x91, 0xA4, 0xF0, 0x5C, 0x50, 0xD6, 0x88, 0x91, 0xA7, 0x44, 0xBC, 0xC6, 0xE7,
+      0xD6, 0xD5, 0xB5, 0xE8, 0x2C, 0x01, 0x8D, 0xA9, 0x99, 0xED, 0x35, 0xB0, 0xBB, 0x49, 0xC9, 0x67,
+      0x8E, 0x52, 0x6A, 0xBD, 0x8E, 0x85, 0xC1, 0x3E, 0xD2, 0x54, 0x02, 0x1D, 0xB9, 0xE7, 0x90, 0xCE,
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    // build strings
+    tuplehash_str_t strs[10] = { 0 };
+    for (size_t j = 0; j < tests[i].num_strs; j++) {
+      strs[j].ptr = tests[i].data + tests[i].pairs[2 * j];
+      strs[j].len = tests[i].pairs[2 * j + 1];
+    }
+
+    // build params
+    const tuplehash_params_t params = {
+      .strs = strs,
+      .num_strs = tests[i].num_strs,
+      .custom = tests[i].custom,
+      .custom_len = tests[i].custom_len,
+    };
+
+    // run
+    uint8_t got[64];
+    tuplehash256(params, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_tuplehash256(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, 32);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, 32);
+    }
+  }
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -3305,6 +3463,7 @@ int main(void) {
   test_kmac128_xof();
   test_kmac256_xof();
   test_tuplehash128();
+  test_tuplehash256();
   printf("ok\n");
 }
 
