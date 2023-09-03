@@ -37,9 +37,9 @@ void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const siz
 void shake256_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
 
 typedef struct {
-  const uint8_t * const name; // NIST function name
+  const uint8_t *name; // NIST function name
   const size_t name_len; // length of NIST function name, in bytes
-  const uint8_t * const custom; // customization string
+  const uint8_t *custom; // customization string
   const size_t custom_len; // length of customization string, in bytes
 } cshake_params_t;
 
@@ -53,6 +53,13 @@ void cshake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const si
 void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params);
 _Bool cshake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len);
 void cshake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
+
+typedef struct {
+  const uint8_t *key; // key string
+  const size_t key_len; // length of key string, in bytes
+  const uint8_t *custom; // customization string
+  const size_t custom_len; // length of customization string, in bytes
+} kmac_params_t;
 
 #ifdef __cplusplus
 }

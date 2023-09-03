@@ -669,6 +669,62 @@ void cshake256(
   cshake256_xof_squeeze(&xof, dst, dst_len);
 }
 
+void kmac128(
+  const kmac_params_t params,
+  const uint8_t * const msg, const size_t msg_len,
+  uint8_t * const dst, const size_t dst_len
+) {
+  static const uint8_t PAD[CSHAKE128_XOF_RATE] = { 0 };
+  static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
+
+  // build cshake128 params
+  const cshake_params_t cshake_params = {
+    .name = NAME,
+    .name_len = sizeof(NAME),
+    .custom = params.custom,
+    .custom_len = params.custom_len,
+  };
+
+  // build key prefix
+  uint8_t key_buf[9] = { 0 };
+  const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
+
+  // build bytepad prefix
+  const bytepad_t bp = bytepad(key_buf_len + params.key_len, CSHAKE128_XOF_RATE);
+
+  // init xof
+  sha3_xof_t xof;
+  cshake128_xof_init(&xof, cshake_params);
+
+  // absorb bytepad prefix
+  (void) cshake128_xof_absorb(&xof, bp.prefix, bp.prefix_len);
+
+  // absorb key
+  (void) cshake128_xof_absorb(&xof, key_buf, key_buf_len);
+  if (params.key_len > 0) {
+    (void) cshake128_xof_absorb(&xof, params.key, params.key_len);
+  }
+
+  // absorb padding
+  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
+    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
+    (void) cshake128_xof_absorb(&xof, PAD, len);
+  }
+
+  // absorb message
+  (void) cshake128_xof_absorb(&xof, msg, msg_len);
+
+  // build output length suffix
+  uint8_t suffix_buf[9] = { 0 };
+  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
+
+  // absorb output length suffix
+  (void) cshake128_xof_absorb(&xof, suffix_buf, suffix_buf_len);
+
+  // squeeze
+  cshake128_xof_squeeze(&xof, dst, dst_len);
+}
+
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
 
@@ -2444,6 +2500,10 @@ static void test_cshake256(void) {
   }
 }
 
+static void test_kmac128(void) {
+  // TODO
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -2467,6 +2527,7 @@ int main(void) {
   test_bytepad();
   test_cshake128();
   test_cshake256();
+  test_kmac128();
   printf("ok\n");
 }
 
