@@ -515,6 +515,86 @@ void cshake128(
   cshake128_xof_squeeze(&xof, dst, dst_len);
 }
 
+#define CSHAKE256_XOF_RATE (200 - 2 * 32)
+#define CSHAKE256_XOF_PAD 0x04
+
+_Bool cshake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
+  return xof_absorb(xof, CSHAKE256_XOF_RATE, msg, len);
+}
+
+void cshake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
+  xof_squeeze(xof, CSHAKE256_XOF_RATE, CSHAKE256_XOF_PAD, dst, len);
+}
+
+void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
+  static const uint8_t PAD[CSHAKE256_XOF_RATE] = { 0 };
+
+  if (!params.name_len && !params.custom_len) {
+    // cshake w/o nist prefix and domain is shake
+    shake256_xof_init(xof);
+
+    // FIXME: padding will be wrong on subsequent cshake256_xof_absorb()
+    // calls
+    return;
+  }
+
+  // build nist function name prefix
+  uint8_t name_buf[9] = { 0 };
+  const size_t name_len = encode_string_prefix(name_buf, params.name_len);
+
+  // build custom string prefix
+  uint8_t custom_buf[9] = { 0 };
+  const size_t custom_len = encode_string_prefix(custom_buf, params.custom_len);
+
+  const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len;
+
+  // build bytepad prefix
+  uint8_t bytepad_buf[9] = { 0 };
+  const bytepad_lens_t lens = bytepad_prefix(bytepad_buf, raw_len, CSHAKE256_XOF_RATE);
+
+  // init xof
+  xof_init(xof);
+
+  // absorb cshake prefix and padding
+  (void) cshake256_xof_absorb(xof, bytepad_buf, lens.prefix_len);
+
+  (void) cshake256_xof_absorb(xof, name_buf, name_len);
+  if (params.name_len > 0) {
+    (void) cshake256_xof_absorb(xof, params.name, params.name_len);
+  }
+
+  (void) cshake256_xof_absorb(xof, custom_buf, custom_len);
+  if (params.custom_len > 0) {
+    (void) cshake256_xof_absorb(xof, params.custom, params.custom_len);
+  }
+
+  for (size_t ofs = 0; ofs < lens.pad_len; ofs += sizeof(PAD)) {
+    const size_t len = (lens.pad_len - ofs) < sizeof(PAD) ? lens.pad_len - ofs : sizeof(PAD);
+    (void) cshake256_xof_absorb(xof, PAD, len);
+  }
+}
+
+void cshake256(
+  const cshake_params_t params,
+  const uint8_t * const msg, const size_t msg_len,
+  uint8_t * const dst, const size_t dst_len
+) {
+  if (!params.name_len && !params.custom_len) {
+    // cshake w/o nist prefix and domain is shake
+    shake256_xof_once(msg, msg_len, dst, dst_len);
+    return;
+  }
+
+  // init
+  sha3_xof_t xof;
+  cshake256_xof_init(&xof, params);
+
+  // absorb
+  (void) cshake256_xof_absorb(&xof, msg, msg_len);
+
+  // squeeze
+  cshake256_xof_squeeze(&xof, dst, dst_len);
+}
 
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
@@ -2134,6 +2214,89 @@ static void test_cshake128(void) {
   }
 }
 
+static void test_cshake256(void) {
+  static const struct {
+    const char *test_name; // test name
+    const uint8_t name[256]; // nist function name
+    const size_t name_len; // nist function name length
+    const uint8_t custom[256]; // custom name
+    const size_t custom_len; // custom name length
+    const uint8_t msg[256]; // test message
+    const size_t len; // test message length
+    const uint8_t exp[64]; // expected hash
+  } tests[] = {{
+    // src: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/cSHAKE_samples.pdf
+    .test_name = "cSHAKE Sample #3",
+    .custom = "Email Signature",
+    .custom_len = 15,
+    .msg = { 0, 1, 2, 3 },
+    .len = 4,
+    .exp = {
+      0xD0, 0x08, 0x82, 0x8E, 0x2B, 0x80, 0xAC, 0x9D,
+      0x22, 0x18, 0xFF, 0xEE, 0x1D, 0x07, 0x0C, 0x48,
+      0xB8, 0xE4, 0xC8, 0x7B, 0xFF, 0x32, 0xC9, 0x69,
+      0x9D, 0x5B, 0x68, 0x96, 0xEE, 0xE0, 0xED, 0xD1,
+      0x64, 0x02, 0x0E, 0x2B, 0xE0, 0x56, 0x08, 0x58,
+      0xD9, 0xC0, 0x0C, 0x03, 0x7E, 0x34, 0xA9, 0x69,
+      0x37, 0xC5, 0x61, 0xA7, 0x4C, 0x41, 0x2B, 0xB4,
+      0xC7, 0x46, 0x46, 0x95, 0x27, 0x28, 0x1C, 0x8C,
+    },
+  }, {
+    // src: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/cSHAKE_samples.pdf
+    .test_name = "cSHAKE Sample #4",
+    .custom = "Email Signature",
+    .custom_len = 15,
+    .msg = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+      0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+      0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+      0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
+      0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
+      0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F,
+      0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
+      0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F,
+      0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF,
+      0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+      0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7,
+    },
+    .len = 200,
+    .exp = {
+      0x07, 0xDC, 0x27, 0xB1, 0x1E, 0x51, 0xFB, 0xAC,
+      0x75, 0xBC, 0x7B, 0x3C, 0x1D, 0x98, 0x3E, 0x8B,
+      0x4B, 0x85, 0xFB, 0x1D, 0xEF, 0xAF, 0x21, 0x89,
+      0x12, 0xAC, 0x86, 0x43, 0x02, 0x73, 0x09, 0x17,
+      0x27, 0xF4, 0x2B, 0x17, 0xED, 0x1D, 0xF6, 0x3E,
+      0x8E, 0xC1, 0x18, 0xF0, 0x4B, 0x23, 0x63, 0x3C,
+      0x1D, 0xFB, 0x15, 0x74, 0xC8, 0xFB, 0x55, 0xCB,
+      0x45, 0xDA, 0x8E, 0x25, 0xAF, 0xB0, 0x92, 0xBB,
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    const cshake_params_t params = {
+      .name = tests[i].name,
+      .name_len = tests[i].name_len,
+      .custom = tests[i].custom,
+      .custom_len = tests[i].custom_len,
+    };
+
+    // run
+    uint8_t got[32];
+    cshake256(params, tests[i].msg, tests[i].len, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_cshake256(\"%s\") failed, got:\n", tests[i].test_name);
+      dump_hex(stderr, got, 32);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, 32);
+    }
+  }
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -2155,6 +2318,7 @@ int main(void) {
   test_encode_string_prefix();
   test_bytepad_prefix();
   test_cshake128();
+  test_cshake256();
   printf("ok\n");
 }
 
