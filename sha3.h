@@ -61,6 +61,9 @@ typedef struct {
   const size_t custom_len; // length of customization string, in bytes
 } kmac_params_t;
 
+void kmac128(const kmac_params_t params, const uint8_t * const msg, const size_t msg_len, uint8_t * const dst, const size_t dst_len);
+void kmac256(const kmac_params_t params, const uint8_t * const msg, const size_t msg_len, uint8_t * const dst, const size_t dst_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
