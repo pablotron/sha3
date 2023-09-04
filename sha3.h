@@ -254,8 +254,8 @@ _Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len
 
 /**
  * Squeeze `dst_len` bytes data into output buffer `dst` from cSHAKE128
- * context XOF context `xof`.  Can be called iteratively to squeeze
- * output data in chunks.
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
  *
  * Note: cSHAKE is used to implement the hash and extendable output
  * functions (XOF) defined in NIST SP 800-185 and should generally not
@@ -299,8 +299,8 @@ _Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len
 
 /**
  * Squeeze `dst_len` bytes data into output buffer `dst` from cSHAKE256
- * context XOF context `xof`.  Can be called iteratively to squeeze
- * output data in chunks.
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
  *
  * Note: cSHAKE is used to implement the hash and extendable output
  * functions (XOF) defined in NIST SP 800-185 and should generally not
@@ -312,6 +312,7 @@ _Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len
  */
 void cshake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
+// KMAC configuration parameters (key and customization string).
 typedef struct {
   const uint8_t *key; // key string
   const size_t key_len; // length of key string, in bytes
@@ -319,22 +320,165 @@ typedef struct {
   const size_t custom_len; // length of customization string, in bytes
 } kmac_params_t;
 
+/**
+ * Initialize internal KMAC128 (Keccak Message Authentication Code, as
+ * defined in section 4 of NIST SP 800-185) context with configuration
+ * parameters `params`, absorb data in buffer `src` of length `src_len`
+ * bytes into internal context, then squeeze `dst_len` bytes of output
+ * into destination buffer `dst`.
+ *
+ * @param[in] params KMAC configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void kmac128(const kmac_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal KMAC256 (Keccak Message Authentication Code, as
+ * defined in section 4 of NIST SP 800-185) XOF context with
+ * configuration parameters `params`, absorb data in buffer `src` of
+ * length `src_len` bytes into internal context, then squeeze `dst_len`
+ * bytes of output into destination buffer `dst`.
+ *
+ * @param[in] params KMAC configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void kmac256(const kmac_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize KMAC128 XOF (Keccak Message Authentication Code eXtendable
+ * Output Function, as defined in section 4.3.1 of NIST SP 800-185)
+ * context with configuration parameters `params`.
+ *
+ * Note: KMAC128 and KMAC128 XOF produce different output, because
+ * KMAC128 encodes the fixed output size as part of the input while
+ * KMAC128 XOF does not.  See section 4.3.1 of NIST SP 800-185 for
+ * details.
+ *
+ * @param[out] xof KMAC128 XOF context.
+ * @param[in] params KMAC configuration parameters.
+ */
 void kmac128_xof_init(sha3_xof_t *xof, const kmac_params_t params);
-_Bool kmac128_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+
+/**
+ * Absorb data in buffer `src` of length `len` bytes into KMAC128 XOF
+ * context.  Can be called iteratively to absorb input data in chunks.
+ *
+ * @param[in/out] xof KMAC128 XOF context.
+ * @param[in] src Input data buffer.
+ * @param[in] len Input data buffer length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
+ */
+_Bool kmac128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `len` bytes data into output buffer `dst` from KMAC128 XOF
+ * context `xof`.  Can be called iteratively to squeeze output data in
+ * chunks.
+ *
+ * Note: KMAC128 and KMAC128 XOF produce different output, because
+ * KMAC128 encodes the fixed output size as part of the input while
+ * KMAC128 XOF does not.  See section 4.3.1 of NIST SP 800-185 for
+ * details.
+ *
+ * @param[in/out] xof KMAC128 XOF context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void kmac128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize internal KMAC128 XOF (Keccak Message Authentication Code
+ * eXtendable Output Function, as defined in section 4 of NIST SP
+ * 800-185) context with configuration parameters `params`, absorb data
+ * in buffer `src` of length `src_len` bytes into internal context, then
+ * squeeze `dst_len` bytes of output into destination buffer `dst`.
+ *
+ * Note: KMAC128 and KMAC128 XOF produce different output, because
+ * KMAC128 encodes the fixed output size as part of the input while
+ * KMAC128 XOF does not.  See section 4.3.1 of NIST SP 800-185 for
+ * details.
+ *
+ * @param[in] params KMAC configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void kmac128_xof_once(const kmac_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize KMAC256 XOF (Keccak Message Authentication Code eXtendable
+ * Output Function, as defined in section 4.3.1 of NIST SP 800-185)
+ * context with configuration parameters `params`.
+ *
+ * Note: KMAC256 and KMAC256 XOF produce different output, because
+ * KMAC256 encodes the fixed output size as part of the input while
+ * KMAC256 XOF does not.  See section 4.3.1 of NIST SP 800-185 for
+ * details.
+ *
+ * @param[out] xof KMAC256 XOF context.
+ * @param[in] params KMAC configuration parameters.
+ */
 void kmac256_xof_init(sha3_xof_t *xof, const kmac_params_t params);
+
+/**
+ * Absorb data in buffer `src` of length `len` bytes into KMAC256 XOF
+ * context.  Can be called iteratively to absorb input data in chunks.
+ *
+ * @param[in/out] xof KMAC256 XOF context.
+ * @param[in] src Input data buffer.
+ * @param[in] len Input data buffer length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
+ */
 _Bool kmac256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+
+/**
+ * Squeeze `len` bytes data into output buffer `dst` from KMAC256 XOF
+ * context `xof`.  Can be called iteratively to squeeze output data in
+ * chunks.
+ *
+ * Note: KMAC256 and KMAC256 XOF produce different output, because
+ * KMAC256 encodes the fixed output size as part of the input while
+ * KMAC256 XOF does not.  See section 4.3.1 of NIST SP 800-185 for
+ * details.
+ *
+ * @param[in/out] xof KMAC256 XOF context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void kmac256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize internal KMAC256 XOF (Keccak Message Authentication Code
+ * eXtendable Output Function, as defined in section 4 of NIST SP
+ * 800-185) context with configuration parameters `params`, absorb data
+ * in buffer `src` of length `src_len` bytes into internal context, then
+ * squeeze `dst_len` bytes of output into destination buffer `dst`.
+ *
+ * Note: KMAC256 and KMAC256 XOF produce different output, because
+ * KMAC256 encodes the fixed output size as part of the input while
+ * KMAC256 XOF does not.  See section 4.3.1 of NIST SP 800-185 for
+ * details.
+ *
+ * @param[in] params KMAC configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void kmac256_xof_once(const kmac_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 typedef struct {
-  const uint8_t *ptr;
-  size_t len;
+  const uint8_t *ptr; // pointer to byte string
+  size_t len; // byte string length, in bytes.
 } tuplehash_str_t;
 
 typedef struct {
