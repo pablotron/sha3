@@ -21,6 +21,8 @@
 Use `make` to build a minimal test application, and `make test` to run
 the built-in tests.
 
+TODO: `hmac_sha3_{224,256,384,512}`
+
 [C11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
   "ISO/IEC 9899:2011"
 [SHA-3]: https://en.wikipedia.org/wiki/SHA-3
