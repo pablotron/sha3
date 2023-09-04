@@ -1152,10 +1152,10 @@ void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t 
   parallelhash128_xof_init(&hash, params);
 
   // absorb
-  parallelhash128_absorb(&hash, src, src_len);
+  parallelhash128_xof_absorb(&hash, src, src_len);
 
   // squeeze
-  parallelhash128_squeeze(&hash, dst, dst_len);
+  parallelhash128_xof_squeeze(&hash, dst, dst_len);
 }
 
 #ifdef SHA3_TEST
