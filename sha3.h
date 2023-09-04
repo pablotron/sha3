@@ -113,11 +113,17 @@ typedef struct {
 } parallelhash_t;
 
 void parallelhash128(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void parallelhash256(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
 
 void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
 void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
 void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
 void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+
+void parallelhash256_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
+void parallelhash256_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
+void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
+void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
 
 #ifdef __cplusplus
 }
