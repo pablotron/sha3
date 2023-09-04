@@ -612,12 +612,14 @@ void tuplehash256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  */
 void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t len);
 
+// ParallelHash configuration parameters.
 typedef struct {
   const size_t block_len; // block size, in bytes
   const uint8_t *custom; // customization string
   const size_t custom_len; // length of customization string, in bytes
 } parallelhash_params_t;
 
+// ParallelHash context.
 typedef struct {
   sha3_xof_t root_xof, // root xof
              curr_xof; // xof for current block (note: shake128, not cshake128)
@@ -627,17 +629,187 @@ typedef struct {
   _Bool squeezing; // current state
 } parallelhash_t;
 
+/**
+ * Initialize internal ParallelHash128 (NIST SP 800-185, section 6)
+ * context with configuration parameters `params`, then squeeze
+ * `dst_len` bytes of output from internal context into destination
+ * buffer `dst`.
+ *
+ * Note: This implementation of ParallelHash128 is sequential, not
+ * parallel.
+ *
+ * Note: This implementation of ParallelHash128 is sequential, not
+ * @param[in] params ParallelHash128 configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void parallelhash128(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal ParallelHash256 (NIST SP 800-185, section 6)
+ * context with configuration parameters `params`, then squeeze
+ * `dst_len` bytes of output from internal context into destination
+ * buffer `dst`.
+ *
+ * Note: This implementation of ParallelHash256 is sequential, not
+ * parallel.
+ *
+ * @param[in] params ParallelHash256 configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void parallelhash256(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize ParallelHash128 XOF (ParallelHash eXtendable Output
+ * Function, as defined in section 6.3.1 of NIST SP 800-185) context
+ * with configuration parameters `params`.
+ *
+ * Note: ParallelHash128 and ParallelHash128 XOF produce different
+ * output, because ParallelHash128 encodes the fixed output size as part
+ * of the input while ParallelHash128 XOF does not.  See section 6.3.1
+ * of NIST SP 800-185 for details.
+ *
+ * Note: This implementation of ParallelHash128 is sequential, not
+ * parallel.
+ *
+ * @param[out] xof ParallelHash128 XOF context.
+ * @param[in] params ParallelHash configuration parameters.
+ */
 void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
-void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
-void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Absorb data in buffer `src` of length `len` bytes into
+ * ParallelHash128 XOF context.  Can be called iteratively to absorb
+ * input data in chunks.
+ *
+ * Note: This implementation of ParallelHash128 is sequential, not
+ * parallel.
+ *
+ * @param[in/out] hash ParallelHash128 XOF context.
+ * @param[in] src Input data buffer.
+ * @param[in] len Input data buffer length, in bytes.
+ */
+void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `len` bytes data into output buffer `dst` from ParallelHash128
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
+ *
+ * Note: ParallelHash128 and ParallelHash128 XOF produce different
+ * output, because ParallelHash128 encodes the fixed output size as part
+ * of the input while ParallelHash128 XOF does not.  See section 6.3.1
+ * of NIST SP 800-185 for details.
+ *
+ * Note: This implementation of ParallelHash128 is sequential, not
+ * parallel.
+ *
+ * @param[in/out] xof ParallelHash128 XOF context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize internal ParallelHash128 XOF (ParallelHash eXtendable
+ * Output Function, as defined in section 6.3.1 of NIST SP 800-185)
+ * context with configuration parameters `params`, absorb data in buffer
+ * `src` of length `src_len` bytes into context, thenqueeze `dst_len`
+ * bytes data into output buffer `dst`.
+ *
+ * Note: ParallelHash128 and ParallelHash128 XOF produce different
+ * output, because ParallelHash128 encodes the fixed output size as part
+ * of the input while ParallelHash128 XOF does not.  See section 6.3.1
+ * of NIST SP 800-185 for details.
+ *
+ * Note: This implementation of ParallelHash128 is sequential, not
+ * parallel.
+ *
+ * @param[in] params ParallelHash configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
 void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize ParallelHash256 XOF (ParallelHash eXtendable Output
+ * Function, as defined in section 6.3.1 of NIST SP 800-185) context
+ * with configuration parameters `params`.
+ *
+ * Note: ParallelHash256 and ParallelHash256 XOF produce different
+ * output, because ParallelHash256 encodes the fixed output size as part
+ * of the input while ParallelHash256 XOF does not.  See section 6.3.1
+ * of NIST SP 800-185 for details.
+ *
+ * Note: This implementation of ParallelHash256 is sequential, not
+ * parallel.
+ *
+ * @param[out] xof ParallelHash256 XOF context.
+ * @param[in] params ParallelHash configuration parameters.
+ */
 void parallelhash256_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
-void parallelhash256_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
-void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Absorb data in buffer `src` of length `len` bytes into
+ * ParallelHash256 XOF context.  Can be called iteratively to absorb
+ * input data in chunks.
+ *
+ * Note: This implementation of ParallelHash256 is sequential, not
+ * parallel.
+ *
+ * @param[in/out] hash ParallelHash256 XOF context.
+ * @param[in] src Input data buffer.
+ * @param[in] len Input data buffer length, in bytes.
+ */
+void parallelhash256_xof_absorb(parallelhash_t *hash, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `len` bytes data into output buffer `dst` from ParallelHash256
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
+ *
+ * Note: ParallelHash256 and ParallelHash256 XOF produce different
+ * output, because ParallelHash256 encodes the fixed output size as part
+ * of the input while ParallelHash256 XOF does not.  See section 6.3.1
+ * of NIST SP 800-185 for details.
+ *
+ * Note: This implementation of ParallelHash256 is sequential, not
+ * parallel.
+ *
+ * @param[in/out] xof ParallelHash256 XOF context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize internal ParallelHash256 XOF (ParallelHash eXtendable
+ * Output Function, as defined in section 6.3.1 of NIST SP 800-185)
+ * context with configuration parameters `params`, absorb data in buffer
+ * `src` of length `src_len` bytes into context, thenqueeze `dst_len`
+ * bytes data into output buffer `dst`.
+ *
+ * Note: ParallelHash256 and ParallelHash256 XOF produce different
+ * output, because ParallelHash256 encodes the fixed output size as part
+ * of the input while ParallelHash256 XOF does not.  See section 6.3.1
+ * of NIST SP 800-185 for details.
+ *
+ * Note: This implementation of ParallelHash256 is sequential, not
+ * parallel.
+ *
+ * @param[in] params ParallelHash configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
 void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 #ifdef __cplusplus
