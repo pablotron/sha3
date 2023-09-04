@@ -17,11 +17,11 @@ typedef union {
   uint64_t u64[25];
 } sha3_state_t;
 
-// XOF state
+// Internal XOF state
 typedef struct {
-  size_t num_bytes;
-  sha3_state_t a;
-  _Bool squeezing;
+  size_t num_bytes; // number of bytes absorbed
+  sha3_state_t a; // internal state
+  _Bool squeezing; // mode (absorbing or squeezing)
 } sha3_xof_t;
 
 /**
@@ -102,7 +102,7 @@ void shake128_xof_init(sha3_xof_t * const xof);
  * context `xof`.  Can be called iteratively to absorb input data in
  * chunks.
  *
- * @param[in] xof SHAKE128 XOF context.
+ * @param[in/out] xof SHAKE128 XOF context.
  * @param[in] m Input data.
  * @param[in] len Input data length, in bytes.
  *
@@ -115,7 +115,7 @@ _Bool shake128_xof_absorb(sha3_xof_t *xof, const uint8_t *m, const size_t len);
  * XOF context `xof`.  Can be called iteratively to squeeze output data
  * in chunks.
  *
- * @param[in] xof SHAKE128 XOF context.
+ * @param[in/out] xof SHAKE128 XOF context.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -145,7 +145,7 @@ void shake256_xof_init(sha3_xof_t *xof);
  * context `xof`.  Can be called iteratively to absorb input data in
  * chunks.
  *
- * @param[in] xof SHAKE256 XOF context.
+ * @param[in/out] xof SHAKE256 XOF context.
  * @param[in] m Input data.
  * @param[in] len Input data length, in bytes.
  *
@@ -158,7 +158,7 @@ _Bool shake256_xof_absorb(sha3_xof_t *xof, const uint8_t *m, const size_t len);
  * XOF context `xof`.  Can be called iteratively to squeeze output data
  * in chunks.
  *
- * @param[in] xof SHAKE256 XOF context.
+ * @param[in/out] xof SHAKE256 XOF context.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -184,15 +184,132 @@ typedef struct {
   const size_t custom_len; // length of customization string, in bytes
 } cshake_params_t;
 
-void cshake128(const cshake_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
-void cshake256(const cshake_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
+/**
+ * Initialize internal cSHAKE128 (customizable SHAKE128, as defined in
+ * section 3 of NIST SP 800-185) context with customization parameters
+ * `params`, absorb data in buffer `src` of length `src_len` bytes into
+ * internal context, then squeeze `dst_len` bytes of output into
+ * destination buffer `dst`.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[in] params cSHAKE customization parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void cshake128(const cshake_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize internal cSHAKE256 (customizable SHAKE256, as defined in
+ * section 3 of NIST SP 800-185) context with customization parameters
+ * `params`, absorb data in buffer `src` of length `src_len` bytes into
+ * internal context, then squeeze `dst_len` bytes of output into
+ * destination buffer `dst`.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[in] params cSHAKE customization parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void cshake256(const cshake_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize cSHAKE128 (customizable SHAKE128, as defined in section 3 of
+ * NIST SP 800-185) XOF context with customization parameters `params`.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[out] xof cSHAKE128 context.
+ * @param[in] params cSHAKE128 customization parameters.
+ */
 void cshake128_xof_init(sha3_xof_t *xof, const cshake_params_t params);
-_Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+
+/**
+ * Absorb data in buffer `src` of length `len` bytes into cSHAKE128 XOF
+ * context `xof`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[in/out] xof cSHAKE128 context.
+ * @param[in] msg Input data buffer.
+ * @param[in] len Input data buffer length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
+ */
+_Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `dst_len` bytes data into output buffer `dst` from cSHAKE128
+ * context XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[in/out] xof cSHAKE128 context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void cshake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
+/**
+ * Initialize cSHAKE256 (customizable SHAKE256, as defined in section 3 of
+ * NIST SP 800-185) XOF context with customization parameters `params`.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[out] xof cSHAKE256 context.
+ * @param[in] params cSHAKE256 customization parameters.
+ */
 void cshake256_xof_init(sha3_xof_t *xof, const cshake_params_t params);
-_Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+
+/**
+ * Absorb data in buffer `src` of length `len` bytes into cSHAKE256 XOF
+ * context `xof`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[in/out] xof cSHAKE256 context.
+ * @param[in] msg Input data buffer.
+ * @param[in] len Input data buffer length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
+ */
+_Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `dst_len` bytes data into output buffer `dst` from cSHAKE256
+ * context XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * Note: cSHAKE is used to implement the hash and extendable output
+ * functions (XOF) defined in NIST SP 800-185 and should generally not
+ * be used directly.
+ *
+ * @param[in/out] xof cSHAKE256 context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void cshake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 typedef struct {
