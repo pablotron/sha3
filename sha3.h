@@ -108,7 +108,7 @@ void shake128_xof_init(sha3_xof_t * const xof);
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  */
-_Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len);
+_Bool shake128_xof_absorb(sha3_xof_t *xof, const uint8_t *m, const size_t len);
 
 /**
  * Squeeze `dst_len` bytes data into output buffer `dst` from SHAKE128
@@ -119,7 +119,7 @@ _Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
-void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
+void shake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
 
 /**
  * Absorb data in buffer `src` of length `src_len` bytes into SHAKE128
@@ -131,14 +131,14 @@ void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const siz
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
-void shake128_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void shake128_xof_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 /**
  * Initialize SHAKE256 extendable-output function (XOF) context.
  *
  * @param[out] xof SHAKE256 XOF context.
  */
-void shake256_xof_init(sha3_xof_t * const xof);
+void shake256_xof_init(sha3_xof_t *xof);
 
 /**
  * Absorb input data in `m` of length `len` bytes into SHAKE256 XOF
@@ -151,7 +151,7 @@ void shake256_xof_init(sha3_xof_t * const xof);
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  */
-_Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len);
+_Bool shake256_xof_absorb(sha3_xof_t *xof, const uint8_t *m, const size_t len);
 
 /**
  * Squeeze `dst_len` bytes data into output buffer `dst` from SHAKE256
@@ -162,7 +162,7 @@ _Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
-void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
+void shake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
 
 /**
  * Absorb data in buffer `src` of length `src_len` bytes into SHAKE256
@@ -174,7 +174,7 @@ void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const siz
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
-void shake256_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void shake256_xof_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 // cSHAKE parameters.
 typedef struct {
@@ -184,16 +184,16 @@ typedef struct {
   const size_t custom_len; // length of customization string, in bytes
 } cshake_params_t;
 
-void cshake128(const cshake_params_t params, const uint8_t * const msg, const size_t msg_len, uint8_t * const dst, const size_t dst_len);
-void cshake256(const cshake_params_t params, const uint8_t * const msg, const size_t msg_len, uint8_t * const dst, const size_t dst_len);
+void cshake128(const cshake_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
+void cshake256(const cshake_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
 
-void cshake128_xof_init(sha3_xof_t * const xof, const cshake_params_t params);
-_Bool cshake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len);
-void cshake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
+void cshake128_xof_init(sha3_xof_t *xof, const cshake_params_t params);
+_Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+void cshake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
-void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params);
-_Bool cshake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len);
-void cshake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
+void cshake256_xof_init(sha3_xof_t *xof, const cshake_params_t params);
+_Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+void cshake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 typedef struct {
   const uint8_t *key; // key string
@@ -202,18 +202,18 @@ typedef struct {
   const size_t custom_len; // length of customization string, in bytes
 } kmac_params_t;
 
-void kmac128(const kmac_params_t params, const uint8_t * const msg, const size_t msg_len, uint8_t * const dst, const size_t dst_len);
-void kmac256(const kmac_params_t params, const uint8_t * const msg, const size_t msg_len, uint8_t * const dst, const size_t dst_len);
+void kmac128(const kmac_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
+void kmac256(const kmac_params_t params, const uint8_t *msg, const size_t msg_len, uint8_t *dst, const size_t dst_len);
 
-void kmac128_xof_init(sha3_xof_t * const xof, const kmac_params_t params);
-_Bool kmac128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len);
-void kmac128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
-void kmac128_xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void kmac128_xof_init(sha3_xof_t *xof, const kmac_params_t params);
+_Bool kmac128_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+void kmac128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void kmac128_xof_once(const kmac_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
-void kmac256_xof_init(sha3_xof_t * const xof, const kmac_params_t params);
-_Bool kmac256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len);
-void kmac256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len);
-void kmac256_xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void kmac256_xof_init(sha3_xof_t *xof, const kmac_params_t params);
+_Bool kmac256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+void kmac256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void kmac256_xof_once(const kmac_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 typedef struct {
   const uint8_t *ptr;
@@ -230,12 +230,12 @@ typedef struct {
 void tuplehash128(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 void tuplehash256(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
-void tuplehash128_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params);
-void tuplehash128_xof_squeeze(sha3_xof_t * const xof, uint8_t *dst, const size_t dst_len);
+void tuplehash128_xof_init(sha3_xof_t *xof, const tuplehash_params_t params);
+void tuplehash128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
 void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
-void tuplehash256_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params);
-void tuplehash256_xof_squeeze(sha3_xof_t * const xof, uint8_t *dst, const size_t dst_len);
+void tuplehash256_xof_init(sha3_xof_t *xof, const tuplehash_params_t params);
+void tuplehash256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
 void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
 typedef struct {
@@ -253,18 +253,18 @@ typedef struct {
   _Bool squeezing; // current state
 } parallelhash_t;
 
-void parallelhash128(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
-void parallelhash256(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void parallelhash128(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+void parallelhash256(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
 void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
 void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
-void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 void parallelhash256_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
 void parallelhash256_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
 void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
-void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 #ifdef __cplusplus
 }
