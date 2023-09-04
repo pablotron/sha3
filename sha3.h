@@ -476,11 +476,13 @@ void kmac256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  */
 void kmac256_xof_once(const kmac_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
+// TupleHash tuple element.
 typedef struct {
   const uint8_t *ptr; // pointer to byte string
   size_t len; // byte string length, in bytes.
 } tuplehash_str_t;
 
+// TupleHash configuration parameters.
 typedef struct {
   const tuplehash_str_t *strs; // strings
   const size_t num_strs; // number of strings
@@ -488,16 +490,127 @@ typedef struct {
   const size_t custom_len; // length of customization string, in bytes
 } tuplehash_params_t;
 
+/**
+ * Initialize internal TupleHash128 (NIST SP 800-185, section 5) context
+ * with configuration parameters `params`, then squeeze `dst_len` bytes
+ * of output from internal context into destination buffer `dst`.
+ *
+ * @param[in] params TupleHash128 configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void tuplehash128(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal TupleHash256 (NIST SP 800-185, section 5) context
+ * with configuration parameters `params`, then squeeze `dst_len` bytes
+ * of output from internal context into destination buffer `dst`.
+ *
+ * @param[in] params TupleHash256 configuration parameters.
+ * @param[in] src Input data buffer.
+ * @param[in] src_len Input data buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void tuplehash256(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize TupleHash128 XOF (TupleHash eXtendable Output Function, as
+ * defined in section 5.3.1 of NIST SP 800-185) context with
+ * configuration parameters `params`.
+ *
+ * Note: TupleHash128 and TupleHash128 XOF produce different output,
+ * because TupleHash128 encodes the fixed output size as part of the
+ * input while TupleHash128 XOF does not.  See section 5.3.1 of NIST SP
+ * 800-185 for details.
+ *
+ * @param[out] xof TupleHash128 XOF context.
+ * @param[in] params TupleHash configuration parameters.
+ */
 void tuplehash128_xof_init(sha3_xof_t *xof, const tuplehash_params_t params);
-void tuplehash128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Squeeze `len` bytes data into output buffer `dst` from TupleHash128
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
+ *
+ * Note: TupleHash128 and TupleHash128 XOF produce different output,
+ * because TupleHash128 encodes the fixed output size as part of the
+ * input while TupleHash128 XOF does not.  See section 5.3.1 of NIST SP
+ * 800-185 for details.
+ *
+ * @param[in/out] xof TupleHash128 XOF context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void tuplehash128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize internal TupleHash128 XOF (TupleHash eXtendable Output
+ * Function, as defined in section 5 of NIST SP 800-185) context with
+ * configuration parameters `params`, then squeeze `dst_len` bytes of
+ * output into destination buffer `dst`.
+ *
+ * Note: TupleHash128 and TupleHash128 XOF produce different output,
+ * because TupleHash128 encodes the fixed output size as part of the
+ * input while TupleHash128 XOF does not.  See section 5.3.1 of NIST SP
+ * 800-185 for details.
+ *
+ * @param[in] params TupleHash128 configuration parameters.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
 void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
+/**
+ * Initialize TupleHash256 XOF (TupleHash eXtendable Output Function, as
+ * defined in section 5.3.1 of NIST SP 800-185) context with
+ * configuration parameters `params`.
+ *
+ * Note: TupleHash256 and TupleHash256 XOF produce different output,
+ * because TupleHash256 encodes the fixed output size as part of the
+ * input while TupleHash256 XOF does not.  See section 5.3.1 of NIST SP
+ * 800-185 for details.
+ *
+ * @param[out] xof TupleHash256 XOF context.
+ * @param[in] params TupleHash configuration parameters.
+ */
 void tuplehash256_xof_init(sha3_xof_t *xof, const tuplehash_params_t params);
-void tuplehash256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
-void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Squeeze `len` bytes data into output buffer `dst` from TupleHash256
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
+ *
+ * Note: TupleHash256 and TupleHash256 XOF produce different output,
+ * because TupleHash256 encodes the fixed output size as part of the
+ * input while TupleHash256 XOF does not.  See section 5.3.1 of NIST SP
+ * 800-185 for details.
+ *
+ * @param[in/out] xof TupleHash256 XOF context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void tuplehash256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize internal TupleHash256 XOF (TupleHash eXtendable Output
+ * Function, as defined in section 5 of NIST SP 800-185) context with
+ * configuration parameters `params`, then squeeze `dst_len` bytes of
+ * output into destination buffer `dst`.
+ *
+ * Note: TupleHash256 and TupleHash256 XOF produce different output,
+ * because TupleHash256 encodes the fixed output size as part of the
+ * input while TupleHash256 XOF does not.  See section 5.3.1 of NIST SP
+ * 800-185 for details.
+ *
+ * @param[in] params TupleHash256 configuration parameters.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t len);
 
 typedef struct {
   const size_t block_len; // block size, in bytes
