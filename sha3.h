@@ -11,13 +11,20 @@ extern "C" {
 
 #include <stdint.h>
 
-// sha3 state
+// Internal sha3 state.
 typedef union {
   uint8_t u8[200];
   uint64_t u64[25];
 } sha3_state_t;
 
-// Internal XOF state
+// Iterative SHA-3 context (all members are private).
+typedef struct {
+  size_t num_bytes; // number of bytes absorbed
+  sha3_state_t a; // internal state
+  _Bool finalized; // mode (absorbing or finalized)
+} sha3_t;
+
+// Iterative XOF context (all members are private).
 typedef struct {
   size_t num_bytes; // number of bytes absorbed
   sha3_state_t a; // internal state
@@ -36,6 +43,35 @@ typedef struct {
 void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]);
 
 /**
+ * Initialize SHA3-224 hash context.
+ *
+ * @param[out] hash SHA3-224 hash context.
+ */
+void sha3_224_init(sha3_t *hash);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into SHA3-224 hash
+ * context `hash`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hash SHA3-224 hash context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool sha3_224_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize SHA3-224 hash context and write 28 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hash SHA3-224 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 28 bytes in length.
+ */
+void sha3_224_final(sha3_t *hash, uint8_t dst[28]);
+
+/**
  * Hash input message in input buffer `m` of length `m_len` bytes with
  * SHA3-256 (FIPS 202, section 6.1) and write 32 bytes of output to
  * destination buffer `dst`.
@@ -45,6 +81,35 @@ void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]);
  * @param[out] dst Destination array.  Must be at least 32 bytes in length.
  */
 void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
+
+/**
+ * Initialize SHA3-256 hash context.
+ *
+ * @param[out] hash SHA3-256 hash context.
+ */
+void sha3_256_init(sha3_t *hash);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into SHA3-256 hash
+ * context `hash`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hash SHA3-256 hash context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool sha3_256_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize SHA3-256 hash context and write 28 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hash SHA3-256 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 32 bytes in length.
+ */
+void sha3_256_final(sha3_t *hash, uint8_t dst[32]);
 
 /**
  * Hash input message in input buffer `m` of length `m_len` bytes with
@@ -58,6 +123,35 @@ void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
 void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]);
 
 /**
+ * Initialize SHA3-384 hash context.
+ *
+ * @param[out] hash SHA3-384 hash context.
+ */
+void sha3_384_init(sha3_t *hash);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into SHA3-384 hash
+ * context `hash`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hash SHA3-384 hash context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool sha3_384_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize SHA3-384 hash context and write 28 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hash SHA3-384 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 48 bytes in length.
+ */
+void sha3_384_final(sha3_t *hash, uint8_t dst[48]);
+
+/**
  * Hash input message in input buffer `m` of length `m_len` bytes with
  * SHA3-512 (FIPS 202, section 6.1) and write 64 bytes of output to
  * destination buffer `dst`.
@@ -67,6 +161,35 @@ void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]);
  * @param[out] dst Destination array.  Must be at least 48 bytes in length.
  */
 void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]);
+
+/**
+ * Initialize SHA3-512 hash context.
+ *
+ * @param[out] hash SHA3-512 hash context.
+ */
+void sha3_512_init(sha3_t *hash);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into SHA3-512 hash
+ * context `hash`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hash SHA3-512 hash context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool sha3_512_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize SHA3-512 hash context and write 28 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hash SHA3-512 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 64 bytes in length.
+ */
+void sha3_512_final(sha3_t *hash, uint8_t dst[64]);
 
 /**
  * Hash input message in buffer `m` of length `m_len` bytes with
