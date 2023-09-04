@@ -25,7 +25,9 @@ typedef struct {
 } sha3_xof_t;
 
 /**
- * SHA3-224, as specified in FIPS 202, section 6.1.
+ * Hash input message in input buffer `m` of length `m_len` bytes with
+ * SHA3-224 (FIPS 202, section 6.1) and write 28 bytes of output to
+ * destination buffer `dst`.
  *
  * @param[in] m Input message.
  * @param[in] m_len Input message length, in bytes.
@@ -34,7 +36,9 @@ typedef struct {
 void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]);
 
 /**
- * SHA3-256, as specified in FIPS 202, section 6.1.
+ * Hash input message in input buffer `m` of length `m_len` bytes with
+ * SHA3-256 (FIPS 202, section 6.1) and write 32 bytes of output to
+ * destination buffer `dst`.
  *
  * @param[in] m Input message.
  * @param[in] m_len Input message length, in bytes.
@@ -43,7 +47,9 @@ void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]);
 void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
 
 /**
- * SHA3-384, as specified in FIPS 202, section 6.1.
+ * Hash input message in input buffer `m` of length `m_len` bytes with
+ * SHA3-384 (FIPS 202, section 6.1) and write 48 bytes of output to
+ * destination buffer `dst`.
  *
  * @param[in] m Input message.
  * @param[in] m_len Input message length, in bytes.
@@ -52,7 +58,9 @@ void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
 void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]);
 
 /**
- * SHA3-512, as specified in FIPS 202, section 6.1.
+ * Hash input message in input buffer `m` of length `m_len` bytes with
+ * SHA3-512 (FIPS 202, section 6.1) and write 64 bytes of output to
+ * destination buffer `dst`.
  *
  * @param[in] m Input message.
  * @param[in] m_len Input message length, in bytes.
@@ -61,7 +69,9 @@ void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]);
 void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]);
 
 /**
- * SHAKE128, as specified in FIPS 202, section 6.2.
+ * Hash input message in buffer `m` of length `m_len` bytes with
+ * SHAKE128 (FIPS 202, section 6.2) and write 16 bytes of output to
+ * destination buffer `dst`.
  *
  * @param[in] m Input message.
  * @param[in] m_len Input message length, in bytes.
@@ -70,7 +80,9 @@ void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]);
 void shake128(const uint8_t *m, size_t m_len, uint8_t dst[static 16]);
 
 /**
- * SHAKE256, as specified in FIPS 202, section 6.2.
+ * Hash input message in buffer `m` of length `m_len` bytes with
+ * SHAKE256 (FIPS 202, section 6.2) and write the result to output
+ * buffer `dst`.
  *
  * @param[in] m Input message.
  * @param[in] m_len Input message length, in bytes.
@@ -86,7 +98,9 @@ void shake256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
 void shake128_xof_init(sha3_xof_t * const xof);
 
 /**
- * Absorb data into SHAKE128 XOF context.
+ * Absorb input data in `m` of length `len` bytes into SHAKE128 XOF
+ * context `xof`.  Can be called iteratively to absorb input data in
+ * chunks.
  *
  * @param[in] xof SHAKE128 XOF context.
  * @param[in] m Input data.
@@ -97,7 +111,9 @@ void shake128_xof_init(sha3_xof_t * const xof);
 _Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len);
 
 /**
- * Squeeze data from SHAKE128 XOF context into output buffer.
+ * Squeeze `dst_len` bytes data into output buffer `dst` from SHAKE128
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
  *
  * @param[in] xof SHAKE128 XOF context.
  * @param[out] dst Destination buffer.
@@ -106,7 +122,9 @@ _Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const
 void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
 
 /**
- * Absorb data into SHAKE128 XOF and then squeeze result into output buffer.
+ * Absorb data in buffer `src` of length `src_len` bytes into SHAKE128
+ * XOF context, then squeeze `dst_len` bytes of output into destination
+ * buffer `dst`.
  *
  * @param[in] src Input data buffer.
  * @param[in] src_len Input data buffer length, in bytes.
@@ -123,7 +141,9 @@ void shake128_xof_once(const uint8_t * const src, const size_t src_len, uint8_t 
 void shake256_xof_init(sha3_xof_t * const xof);
 
 /**
- * Absorb data into SHAKE256 XOF context.
+ * Absorb input data in `m` of length `len` bytes into SHAKE256 XOF
+ * context `xof`.  Can be called iteratively to absorb input data in
+ * chunks.
  *
  * @param[in] xof SHAKE256 XOF context.
  * @param[in] m Input data.
@@ -134,7 +154,9 @@ void shake256_xof_init(sha3_xof_t * const xof);
 _Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len);
 
 /**
- * Squeeze data from SHAKE256 XOF context into output buffer.
+ * Squeeze `dst_len` bytes data into output buffer `dst` from SHAKE256
+ * XOF context `xof`.  Can be called iteratively to squeeze output data
+ * in chunks.
  *
  * @param[in] xof SHAKE256 XOF context.
  * @param[out] dst Destination buffer.
@@ -143,7 +165,9 @@ _Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const
 void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len);
 
 /**
- * Absorb data into SHAKE256 XOF and then squeeze result into output buffer.
+ * Absorb data in buffer `src` of length `src_len` bytes into SHAKE256
+ * XOF context, then squeeze `dst_len` bytes of output into destination
+ * buffer `dst`.
  *
  * @param[in] src Input data buffer.
  * @param[in] src_len Input data buffer length, in bytes.
