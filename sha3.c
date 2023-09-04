@@ -1021,6 +1021,143 @@ void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t * const dst,
   cshake256_xof_squeeze(&xof, dst, dst_len);
 }
 
+static void parallelhash128_emit_block(parallelhash_t * const hash) {
+  // squeeze curr xof, absorb into root xof
+  uint8_t buf[32];
+  shake128_xof_squeeze(&(hash->curr_xof), buf, sizeof(buf));
+  (void) cshake128_xof_absorb(&(hash->root_xof), buf, sizeof(buf));
+
+  // increment block count
+  hash->num_blocks++;
+}
+
+static inline void parallelhash128_reset_curr_xof(parallelhash_t *hash) {
+  // init curr xof
+  shake128_xof_init(&(hash->curr_xof));
+  hash->ofs = 0;
+}
+
+static inline void parallelhash128_init(parallelhash_t *hash, const parallelhash_params_t params) {
+  static const uint8_t NAME[] = { 'P', 'a', 'r', 'a', 'l', 'l', 'e', 'l', 'H', 'a', 's', 'h' };
+
+  // build root xof cshake128 params
+  const cshake_params_t root_cshake_params = {
+    .name = NAME,
+    .name_len = sizeof(NAME),
+    .custom = params.custom,
+    .custom_len = params.custom_len,
+  };
+
+  // init root xof
+  cshake128_xof_init(&(hash->root_xof), root_cshake_params);
+
+  // build block size
+  uint8_t buf[9] = { 0 };
+  const size_t buf_len = left_encode(buf, params.block_len);
+
+  // absorb block length into root xof
+  (void) cshake128_xof_absorb(&(hash->root_xof), buf, buf_len);
+
+  // set parameters
+  hash->block_len = params.block_len;
+  hash->num_blocks = 0;
+  hash->squeezing = false;
+
+  // init curr xof
+  parallelhash128_reset_curr_xof(hash);
+}
+
+static inline void parallelhash128_absorb(parallelhash_t * const hash, const uint8_t *msg, size_t msg_len) {
+  while (msg_len > 0) {
+    const size_t len = MIN(msg_len, hash->block_len - hash->ofs);
+    (void) shake128_xof_absorb(&(hash->curr_xof), msg, len);
+    msg += len;
+    msg_len -= len;
+
+    hash->ofs += len;
+    if (hash->ofs == hash->block_len) {
+      // emit block, reset curr xof
+      parallelhash128_emit_block(hash);
+      parallelhash128_reset_curr_xof(hash);
+    }
+  }
+}
+
+static inline void parallelhash128_squeeze(parallelhash_t * const hash, uint8_t * const dst, const size_t dst_len) {
+  if (!hash->squeezing) {
+    // mark as squeezing
+    hash->squeezing = true;
+
+    if (hash->ofs > 0) {
+      // squeeze curr xof, absorb into root xof
+      parallelhash128_emit_block(hash);
+    }
+
+    {
+      // build num blocks suffix
+      uint8_t buf[9] = { 0 };
+      const size_t len = right_encode(buf, hash->num_blocks);
+
+      // absorb num blocks suffix into root xof
+      (void) cshake128_xof_absorb(&(hash->root_xof), buf, len);
+    }
+
+    {
+      // build output size suffix
+      uint8_t buf[9] = { 0 };
+      const size_t len = right_encode(buf, dst_len << 3);
+
+      // absorb output size suffix into root xof
+      (void) cshake128_xof_absorb(&(hash->root_xof), buf, len);
+    }
+  }
+
+  if (dst_len > 0) {
+    cshake128_xof_squeeze(&(hash->root_xof), dst, dst_len);
+  }
+}
+
+void parallelhash128(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  // init
+  parallelhash_t hash;
+  parallelhash128_init(&hash, params);
+
+  // absorb
+  parallelhash128_absorb(&hash, src, src_len);
+
+  // squeeze
+  parallelhash128_squeeze(&hash, dst, dst_len);
+}
+
+void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t params) {
+  parallelhash128_init(hash, params);
+}
+
+void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len) {
+  parallelhash128_absorb(hash, msg, msg_len);
+}
+
+void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len) {
+  if (!hash->squeezing) {
+    // emit zero length
+    parallelhash128_squeeze(hash, dst, 0);
+  }
+
+  parallelhash128_squeeze(hash, dst, dst_len);
+}
+
+void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  // init
+  parallelhash_t hash;
+  parallelhash128_xof_init(&hash, params);
+
+  // absorb
+  parallelhash128_absorb(&hash, src, src_len);
+
+  // squeeze
+  parallelhash128_squeeze(&hash, dst, dst_len);
+}
+
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
 
@@ -3621,6 +3758,132 @@ static void test_tuplehash256_xof(void) {
   }
 }
 
+static void test_parallelhash128(void) {
+  static const struct {
+    const char *name; // test name
+    const uint8_t custom[256]; // custom name
+    const size_t custom_len; // custom name length
+    const size_t block_len; // block size, in bytes
+    const uint8_t msg[256]; // input data
+    const size_t len; // message length, in bytes
+    const uint8_t exp[32]; // expected hash
+  } tests[] = {{
+    // src: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/ParallelHash_samples.pdf
+    .name = "ParallelHash Sample #1",
+    .custom = "",
+    .custom_len = 0,
+    .block_len = 8,
+    .msg = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+    },
+    .len = 24,
+    .exp = {
+      0xBA, 0x8D, 0xC1, 0xD1, 0xD9, 0x79, 0x33, 0x1D, 0x3F, 0x81, 0x36, 0x03, 0xC6, 0x7F, 0x72, 0x60,
+      0x9A, 0xB5, 0xE4, 0x4B, 0x94, 0xA0, 0xB8, 0xF9, 0xAF, 0x46, 0x51, 0x44, 0x54, 0xA2, 0xB4, 0xF5,
+    },
+  }, {
+    .name = "ParallelHash Sample #2",
+    .custom = "Parallel Data",
+    .custom_len = 13,
+    .block_len = 8,
+    .msg = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+    },
+    .len = 24,
+    .exp = {
+      0xFC, 0x48, 0x4D, 0xCB, 0x3F, 0x84, 0xDC, 0xEE, 0xDC, 0x35, 0x34, 0x38, 0x15, 0x1B, 0xEE, 0x58,
+      0x15, 0x7D, 0x6E, 0xFE, 0xD0, 0x44, 0x5A, 0x81, 0xF1, 0x65, 0xE4, 0x95, 0x79, 0x5B, 0x72, 0x06,
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    // build params
+    const parallelhash_params_t params = {
+      .block_len = tests[i].block_len,
+      .custom = tests[i].custom,
+      .custom_len = tests[i].custom_len,
+    };
+
+    // run
+    uint8_t got[32];
+    parallelhash128(params, tests[i].msg, tests[i].len, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_parallelhash128(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, 32);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, 32);
+    }
+  }
+}
+
+static void test_parallelhash128_xof(void) {
+  static const struct {
+    const char *name; // test name
+    const uint8_t custom[256]; // custom name
+    const size_t custom_len; // custom name length
+    const size_t block_len; // block size, in bytes
+    const uint8_t msg[256]; // input data
+    const size_t len; // message length, in bytes
+    const uint8_t exp[32]; // expected hash
+  } tests[] = {{
+    // src: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/ParallelHashXOF_samples.pdf
+    .name = "ParallelHashXOF Sample #1",
+    .custom = "",
+    .custom_len = 0,
+    .block_len = 8,
+    .msg = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+    },
+    .len = 24,
+    .exp = {
+      0xFE, 0x47, 0xD6, 0x61, 0xE4, 0x9F, 0xFE, 0x5B, 0x7D, 0x99, 0x99, 0x22, 0xC0, 0x62, 0x35, 0x67,
+      0x50, 0xCA, 0xF5, 0x52, 0x98, 0x5B, 0x8E, 0x8C, 0xE6, 0x66, 0x7F, 0x27, 0x27, 0xC3, 0xC8, 0xD3,
+    },
+  }, {
+    .name = "ParallelHashXOF Sample #2",
+    .custom = "Parallel Data",
+    .custom_len = 13,
+    .block_len = 8,
+    .msg = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+    },
+    .len = 24,
+    .exp = {
+      0xEA, 0x2A, 0x79, 0x31, 0x40, 0x82, 0x0F, 0x7A, 0x12, 0x8B, 0x8E, 0xB7, 0x0A, 0x94, 0x39, 0xF9,
+      0x32, 0x57, 0xC6, 0xE6, 0xE7, 0x9B, 0x4A, 0x54, 0x0D, 0x29, 0x1D, 0x6D, 0xAE, 0x70, 0x98, 0xD7,
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    // build params
+    const parallelhash_params_t params = {
+      .block_len = tests[i].block_len,
+      .custom = tests[i].custom,
+      .custom_len = tests[i].custom_len,
+    };
+
+    // run
+    uint8_t got[32];
+    parallelhash128_xof_once(params, tests[i].msg, tests[i].len, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_parallelhash128_xof(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, 32);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, 32);
+    }
+  }
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -3652,6 +3915,8 @@ int main(void) {
   test_tuplehash256();
   test_tuplehash128_xof();
   test_tuplehash256_xof();
+  test_parallelhash128();
+  test_parallelhash128_xof();
   printf("ok\n");
 }
 

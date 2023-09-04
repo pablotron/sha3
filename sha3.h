@@ -97,6 +97,28 @@ void tuplehash256_xof_init(sha3_xof_t * const xof, const tuplehash_params_t para
 void tuplehash256_xof_squeeze(sha3_xof_t * const xof, uint8_t *dst, const size_t dst_len);
 void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t *dst, const size_t dst_len);
 
+typedef struct {
+  const size_t block_len; // block size, in bytes
+  const uint8_t *custom; // customization string
+  const size_t custom_len; // length of customization string, in bytes
+} parallelhash_params_t;
+
+typedef struct {
+  sha3_xof_t root_xof, // root xof
+             curr_xof; // xof for current block (note: shake128, not cshake128)
+  size_t ofs, // offset in current block, in bytes
+         block_len, // block size, in bytes
+         num_blocks; // total number of blocks
+  _Bool squeezing; // current state
+} parallelhash_t;
+
+void parallelhash128(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+
+void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t params);
+void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len);
+void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len);
+void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
