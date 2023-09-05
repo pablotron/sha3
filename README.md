@@ -21,7 +21,7 @@
 * TupleHash256 and TupleHash256-XOF
 * ParallelHash128 and ParallelHash128-XOF
 * ParallelHash256 and ParallelHash256-XOF
-* TurboHash128 and TurboHash256 (incomplete)
+* TurboSHAKE128 and TurboSHAKE256
 
 Use `make` to build a minimal test application, and `make test` to run
 the test suite.
@@ -32,6 +32,8 @@ the test suite.
 * [NIST SP 800-185 - SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash][800-185]
 * [FIPS 198-1 - The Keyed-Hash Message Authentication Code (HMAC)][FIPS 198-1]
 * [NIST CSRC: Cryptographic Standards and Guidelines: Examples with Intermediate Values][csrc-examples]
+* [TurboSHAKE (PDF)][turboshake]
+* [KangarooTwelve and TurboSHAKE][turboshake-ietf]
 
 [C11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
   "ISO/IEC 9899:2011"
@@ -45,3 +47,7 @@ the test suite.
   "The Keyed-Hash Message Authentication Code (HMAC)"
 [csrc-examples]: https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
   "NIST CSRC: Cryptographic Standards and Guidelines: Examples with Intermediate Values"
+[turboshake]: https://eprint.iacr.org/2023/342.pdf
+  "TurboSHAKE"
+[turboshake-ietf]: https://www.ietf.org/archive/id/draft-irtf-cfrg-kangarootwelve-10.html#name-test-vectors
+  "KangarooTwelve and TurboSHAKE"
