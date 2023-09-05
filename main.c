@@ -1,3 +1,4 @@
+// main.c: sha3 test application
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -126,15 +127,20 @@ static size_t get_fn_ofs(const char * const name) {
               "- shake128-xof (XOF)\n" \
               "- shake256-xof (XOF)\n" \
               "\n" \
-              "Example:\n" \
+              "Examples:\n" \
+              "  # get SHA3-256 hash of string \"asdf\"\n" \
               "  %s sha3-256 \"asdf\"\n" \
-              "  dd2781f4c51bccdbe23e4d398b8a82261f585c278dbb4b84989fea70e76723a9\n"
+              "  dd2781f4c51bccdbe23e4d398b8a82261f585c278dbb4b84989fea70e76723a9\n" \
+              "\n" \
+              "  # get first 40 bytes of SHAKE128-XOF output of string \"foo\"\n" \
+              "  %s shake128-xof foo 40\n" \
+              "  f84e95cb5fbd2038863ab27d3cdeac295ad2d4ab96ad1f4b070c0bf36078ef0881db3194a9d0f3dd\n"
 
 int main(int argc, char *argv[]) {
   // check command-line arguments
   if (argc < 3) {
     const char *app = (argc > 0) ? argv[0] : "sha3";
-    fprintf(stderr, USAGE, app, app);
+    fprintf(stderr, USAGE, app, app, app);
     return -1;
   }
 
