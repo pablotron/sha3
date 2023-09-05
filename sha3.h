@@ -25,7 +25,7 @@
  * - TupleHash256 and TupleHash256-XOF
  * - ParallelHash128 and ParallelHash128-XOF
  * - ParallelHash256 and ParallelHash256-XOF
- * - TurboHash128 and TurboHash256 (incomplete)
+ * - TurboHash128 and TurboHash256
  */
 
 #ifndef SHA3_H
@@ -1136,12 +1136,128 @@ void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_
  * parallel.
  *
  * @param[in] params ParallelHash configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] dst_len Destination buffer length, in bytes.
  */
 void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal TurboSHAKE128 context, absorb `src_len` bytes of
+ * input from in source buffer `src`, then squeeze `dst_len` bytes of output
+ * into destination buffer `dst`.
+ *
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
+void turboshake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal TurboSHAKE256 context, absorb `src_len` bytes of
+ * input from in source buffer `src`, then squeeze `dst_len` bytes of output
+ * into destination buffer `dst`.
+ *
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
+void turboshake256(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+// TurboShake XOF context.
+typedef struct {
+  sha3_xof_t xof;
+  uint8_t pad;
+} turboshake_t;
+
+/**
+ * Initialize TurboSHAKE128 context.
+ *
+ * @param[out] ts TurboSHAKE128 context.
+ */
+void turboshake128_init(turboshake_t *ts);
+
+/**
+ * Initialize TurboSHAKE128 context with custom padding byte.  The
+ * custom padding byte can be used as a domain separator and must be in
+ * the range [0x01, 0x7f].
+ *
+ * @param[out] ts TurboSHAKE128 context.
+ * @param[in] pad Padding byte (used for domain separation).
+ *
+ * @return False if the padding byte is out of range and true otherwise.
+ */
+_Bool turboshake128_init_custom(turboshake_t *ts, const uint8_t pad);
+
+/**
+ * Absorb `src_len` bytes of input from in source buffer `src` into
+ * TurboSHAKE128 context `ts`.  Can be called iteratively to absorb
+ * input data in chunks.
+ *
+ * @param[in/out] ts TurboSHAKE128 context.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool turboshake128_absorb(turboshake_t *ts, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * TurboSHAKE128 context `ts`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * @param[in/out] ts TurboSHAKE128 context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void turboshake128_squeeze(turboshake_t *ts, uint8_t *dst, const size_t len);
+
+/**
+ * Initialize TurboSHAKE256 context.
+ *
+ * @param[out] ts TurboSHAKE256 context.
+ */
+void turboshake256_init(turboshake_t *ts);
+
+/**
+ * Initialize TurboSHAKE256 context with custom padding byte.  The
+ * custom padding byte can be used as a domain separator and must be in
+ * the range [0x01, 0x7f].
+ *
+ * @param[out] ts TurboSHAKE256 context.
+ * @param[in] pad Padding byte (used for domain separation).
+ *
+ * @return False if the padding byte is out of range and true otherwise.
+ */
+_Bool turboshake256_init_custom(turboshake_t *ts, const uint8_t pad);
+
+/**
+ * Absorb `src_len` bytes of input from in source buffer `src` into
+ * TurboSHAKE256 context `ts`.  Can be called iteratively to absorb
+ * input data in chunks.
+ *
+ * @param[in/out] ts TurboSHAKE256 context.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool turboshake256_absorb(turboshake_t *ts, const uint8_t *src, const size_t len);
+
+/**
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * TurboSHAKE128 context `ts`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * @param[in/out] ts TurboSHAKE128 context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void turboshake256_squeeze(turboshake_t *ts, uint8_t *dst, const size_t len);
 
 #ifdef __cplusplus
 }
