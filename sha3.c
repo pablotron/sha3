@@ -1,6 +1,32 @@
-//
-// FIPS202 (SHA-3) implementation.
-//
+/**
+ * sha3
+ * https://pablotron.org/sha3
+ *
+ * Copyright (c) 2023 Paul Duncan
+ * SPDX-License-Identifier: MIT-0
+ *
+ * C11 implementations of the following SHA-3 algorithms:
+ *
+ * - SHA3-224
+ * - SHA3-256
+ * - SHA3-384
+ * - SHA3-512
+ * - HMAC-SHA3-224
+ * - HMAC-SHA3-256
+ * - HMAC-SHA3-384
+ * - HMAC-SHA3-512
+ * - SHAKE128 and SHAKE128-XOF
+ * - SHAKE256 and SHAKE256-XOF
+ * - cSHAKE128 and cSHAKE128-XOF
+ * - cSHAKE256 and cSHAKE256-XOF
+ * - KMAC128 and KMAC128-XOF
+ * - KMAC256 and KMAC256-XOF
+ * - TupleHash128 and TupleHash128-XOF
+ * - TupleHash256 and TupleHash256-XOF
+ * - ParallelHash128 and ParallelHash128-XOF
+ * - ParallelHash256 and ParallelHash256-XOF
+ * - TurboHash128 and TurboHash256 (incomplete)
+ */
 
 #include <stdbool.h> // true, false
 #include <stdint.h> // uint64_t
