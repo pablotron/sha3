@@ -1,12 +1,16 @@
 # sha3
 
-[C11] implementations of the following [SHA-3][] algorithms from [FIPS 202][] and 
+[C11][] implementations of the following [SHA-3][] algorithms from [FIPS 202][] and 
 [SP 800-185][800-185]:
 
 * SHA3-224
 * SHA3-256
 * SHA3-384
 * SHA3-512
+* HMAC-SHA3-224
+* HMAC-SHA3-256
+* HMAC-SHA3-384
+* HMAC-SHA3-512
 * SHAKE128 (fixed and XOF)
 * SHAKE256 (fixed and XOF)
 * cSHAKE128 (fixed and XOF)
@@ -19,9 +23,7 @@
 * ParallelHash256 (fixed and XOF)
 
 Use `make` to build a minimal test application, and `make test` to run
-the built-in tests.
-
-TODO: `hmac_sha3_{224,256,384,512}`
+the test suite.
 
 [C11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
   "ISO/IEC 9899:2011"
