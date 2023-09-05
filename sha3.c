@@ -178,7 +178,7 @@ static inline void permute(uint64_t a[static 25], const size_t num_rounds) {
     rho(a);
     pi(a);
     chi(a);
-    iota(a, i);
+    iota(a, 24 - num_rounds + i);
   }
 }
 
