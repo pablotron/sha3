@@ -37,7 +37,7 @@ extern "C" {
 
 #include <stdint.h>
 
-// Internal sha3 state.
+// Internal SHA-3 state.
 typedef union {
   uint8_t u8[200];
   uint64_t u64[25];
@@ -58,15 +58,15 @@ typedef struct {
 } sha3_xof_t;
 
 /**
- * Hash input message in input buffer `m` of length `m_len` bytes with
- * SHA3-224 (FIPS 202, section 6.1) and write 28 bytes of output to
- * destination buffer `dst`.
+ * Hash `len` bytes of input data from source buffer `src` with SHA3-224
+ * (FIPS 202, section 6.1), then write 28 bytes of output to destination
+ * buffer `dst`.
  *
- * @param[in] m Input message.
- * @param[in] m_len Input message length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  * @param[out] dst Destination array.  Must be at least 28 bytes in length.
  */
-void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]);
+void sha3_224(const uint8_t *src, size_t len, uint8_t dst[static 28]);
 
 /**
  * Initialize SHA3-224 hash context.
@@ -76,13 +76,13 @@ void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]);
 void sha3_224_init(sha3_t *hash);
 
 /**
- * Absorb input data in `src` of length `len` bytes into SHA3-224 hash
- * context `hash`.  Can be called iteratively to absorb input data in
- * chunks.
+ * Absorb `len` bytes of input data from source buffer `src` into
+ * SHA3-224 hash context `hash`.  Can be called iteratively to absorb
+ * input data in chunks.
  *
  * @param[in/out] hash SHA3-224 hash context.
- * @param[in] src Input data.
- * @param[in] len Input data length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
  */
@@ -98,15 +98,15 @@ _Bool sha3_224_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 void sha3_224_final(sha3_t *hash, uint8_t dst[28]);
 
 /**
- * Hash input message in input buffer `m` of length `m_len` bytes with
- * SHA3-256 (FIPS 202, section 6.1) and write 32 bytes of output to
- * destination buffer `dst`.
+ * Hash `len` bytes of input data from source buffer `src` with SHA3-256
+ * (FIPS 202, section 6.1), then write 32 bytes of output to destination
+ * buffer `dst`.
  *
- * @param[in] m Input message.
- * @param[in] m_len Input message length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  * @param[out] dst Destination array.  Must be at least 32 bytes in length.
  */
-void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
+void sha3_256(const uint8_t *src, size_t len, uint8_t dst[static 32]);
 
 /**
  * Initialize SHA3-256 hash context.
@@ -116,13 +116,13 @@ void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]);
 void sha3_256_init(sha3_t *hash);
 
 /**
- * Absorb input data in `src` of length `len` bytes into SHA3-256 hash
- * context `hash`.  Can be called iteratively to absorb input data in
- * chunks.
+ * Absorb `len` bytes of input data from source buffer `src` into
+ * SHA3-256 hash context `hash`.  Can be called iteratively to absorb
+ * input data in chunks.
  *
  * @param[in/out] hash SHA3-256 hash context.
- * @param[in] src Input data.
- * @param[in] len Input data length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
  */
@@ -138,15 +138,15 @@ _Bool sha3_256_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 void sha3_256_final(sha3_t *hash, uint8_t dst[32]);
 
 /**
- * Hash input message in input buffer `m` of length `m_len` bytes with
- * SHA3-384 (FIPS 202, section 6.1) and write 48 bytes of output to
- * destination buffer `dst`.
+ * Hash `len` bytes of input data from source buffer `src` with SHA3-384
+ * (FIPS 202, section 6.1), then write 48 bytes of output to destination
+ * buffer `dst`.
  *
- * @param[in] m Input message.
- * @param[in] m_len Input message length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  * @param[out] dst Destination array.  Must be at least 48 bytes in length.
  */
-void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]);
+void sha3_384(const uint8_t *src, size_t len, uint8_t dst[static 48]);
 
 /**
  * Initialize SHA3-384 hash context.
@@ -156,13 +156,13 @@ void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]);
 void sha3_384_init(sha3_t *hash);
 
 /**
- * Absorb input data in `src` of length `len` bytes into SHA3-384 hash
- * context `hash`.  Can be called iteratively to absorb input data in
- * chunks.
+ * Absorb `len` bytes of input data from source buffer `src` into
+ * SHA3-384 hash context `hash`.  Can be called iteratively to absorb
+ * input data in chunks.
  *
  * @param[in/out] hash SHA3-384 hash context.
- * @param[in] src Input data.
- * @param[in] len Input data length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
  */
@@ -178,15 +178,15 @@ _Bool sha3_384_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 void sha3_384_final(sha3_t *hash, uint8_t dst[48]);
 
 /**
- * Hash input message in input buffer `m` of length `m_len` bytes with
- * SHA3-512 (FIPS 202, section 6.1) and write 64 bytes of output to
- * destination buffer `dst`.
+ * Hash `len` bytes of input data from source buffer `src` with SHA3-512
+ * (FIPS 202, section 6.1), then write 64 bytes of output to destination
+ * buffer `dst`.
  *
- * @param[in] m Input message.
- * @param[in] m_len Input message length, in bytes.
- * @param[out] dst Destination array.  Must be at least 48 bytes in length.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
+ * @param[out] dst Destination array.  Must be at least 64 bytes in length.
  */
-void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]);
+void sha3_512(const uint8_t *src, size_t len, uint8_t dst[static 64]);
 
 /**
  * Initialize SHA3-512 hash context.
@@ -196,13 +196,13 @@ void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]);
 void sha3_512_init(sha3_t *hash);
 
 /**
- * Absorb input data in `src` of length `len` bytes into SHA3-512 hash
- * context `hash`.  Can be called iteratively to absorb input data in
- * chunks.
+ * Absorb `len` bytes of input data from source buffer `src` into
+ * SHA3-512 hash context `hash`.  Can be called iteratively to absorb
+ * input data in chunks.
  *
  * @param[in/out] hash SHA3-512 hash context.
- * @param[in] src Input data.
- * @param[in] len Input data length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
  */
@@ -442,9 +442,9 @@ void shake128_xof_init(sha3_xof_t * const xof);
 _Bool shake128_xof_absorb(sha3_xof_t *xof, const uint8_t *m, const size_t len);
 
 /**
- * Squeeze `dst_len` bytes data into output buffer `dst` from SHAKE128
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * SHAKE128 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * @param[in/out] xof SHAKE128 XOF context.
  * @param[out] dst Destination buffer.
@@ -457,8 +457,8 @@ void shake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
  * XOF context, then squeeze `dst_len` bytes of output into destination
  * buffer `dst`.
  *
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -485,9 +485,9 @@ void shake256_xof_init(sha3_xof_t *xof);
 _Bool shake256_xof_absorb(sha3_xof_t *xof, const uint8_t *m, const size_t len);
 
 /**
- * Squeeze `dst_len` bytes data into output buffer `dst` from SHAKE256
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * SHAKE256 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * @param[in/out] xof SHAKE256 XOF context.
  * @param[out] dst Destination buffer.
@@ -500,8 +500,8 @@ void shake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t dst_len);
  * XOF context, then squeeze `dst_len` bytes of output into destination
  * buffer `dst`.
  *
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -527,8 +527,8 @@ typedef struct {
  * be used directly.
  *
  * @param[in] params cSHAKE customization parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -546,8 +546,8 @@ void cshake128(const cshake_params_t params, const uint8_t *src, const size_t sr
  * be used directly.
  *
  * @param[in] params cSHAKE customization parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -576,17 +576,17 @@ void cshake128_xof_init(sha3_xof_t *xof, const cshake_params_t params);
  * be used directly.
  *
  * @param[in/out] xof cSHAKE128 context.
- * @param[in] msg Input data buffer.
- * @param[in] len Input data buffer length, in bytes.
+ * @param[in] msg Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  */
 _Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
- * Squeeze `dst_len` bytes data into output buffer `dst` from cSHAKE128
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * cSHAKE128 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * Note: cSHAKE is used to implement the hash and extendable output
  * functions (XOF) defined in NIST SP 800-185 and should generally not
@@ -621,17 +621,17 @@ void cshake256_xof_init(sha3_xof_t *xof, const cshake_params_t params);
  * be used directly.
  *
  * @param[in/out] xof cSHAKE256 context.
- * @param[in] msg Input data buffer.
- * @param[in] len Input data buffer length, in bytes.
+ * @param[in] msg Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  */
 _Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
- * Squeeze `dst_len` bytes data into output buffer `dst` from cSHAKE256
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * cSHAKE256 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * Note: cSHAKE is used to implement the hash and extendable output
  * functions (XOF) defined in NIST SP 800-185 and should generally not
@@ -659,8 +659,8 @@ typedef struct {
  * into destination buffer `dst`.
  *
  * @param[in] params KMAC configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -674,8 +674,8 @@ void kmac128(const kmac_params_t params, const uint8_t *msg, const size_t msg_le
  * bytes of output into destination buffer `dst`.
  *
  * @param[in] params KMAC configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -701,17 +701,17 @@ void kmac128_xof_init(sha3_xof_t *xof, const kmac_params_t params);
  * context.  Can be called iteratively to absorb input data in chunks.
  *
  * @param[in/out] xof KMAC128 XOF context.
- * @param[in] src Input data buffer.
- * @param[in] len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  */
 _Bool kmac128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
- * Squeeze `len` bytes data into output buffer `dst` from KMAC128 XOF
- * context `xof`.  Can be called iteratively to squeeze output data in
- * chunks.
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * KMAC128 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * Note: KMAC128 and KMAC128 XOF produce different output, because
  * KMAC128 encodes the fixed output size as part of the input while
@@ -737,8 +737,8 @@ void kmac128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  * details.
  *
  * @param[in] params KMAC configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -764,17 +764,17 @@ void kmac256_xof_init(sha3_xof_t *xof, const kmac_params_t params);
  * context.  Can be called iteratively to absorb input data in chunks.
  *
  * @param[in/out] xof KMAC256 XOF context.
- * @param[in] src Input data buffer.
- * @param[in] len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  *
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  */
 _Bool kmac256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
 
 /**
- * Squeeze `len` bytes data into output buffer `dst` from KMAC256 XOF
- * context `xof`.  Can be called iteratively to squeeze output data in
- * chunks.
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * KMAC256 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * Note: KMAC256 and KMAC256 XOF produce different output, because
  * KMAC256 encodes the fixed output size as part of the input while
@@ -800,8 +800,8 @@ void kmac256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  * details.
  *
  * @param[in] params KMAC configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -827,8 +827,8 @@ typedef struct {
  * of output from internal context into destination buffer `dst`.
  *
  * @param[in] params TupleHash128 configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -840,8 +840,8 @@ void tuplehash128(const tuplehash_params_t params, uint8_t *dst, const size_t ds
  * of output from internal context into destination buffer `dst`.
  *
  * @param[in] params TupleHash256 configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -863,9 +863,9 @@ void tuplehash256(const tuplehash_params_t params, uint8_t *dst, const size_t ds
 void tuplehash128_xof_init(sha3_xof_t *xof, const tuplehash_params_t params);
 
 /**
- * Squeeze `len` bytes data into output buffer `dst` from TupleHash128
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * TupleHash128 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * Note: TupleHash128 and TupleHash128 XOF produce different output,
  * because TupleHash128 encodes the fixed output size as part of the
@@ -911,9 +911,9 @@ void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t *dst, const 
 void tuplehash256_xof_init(sha3_xof_t *xof, const tuplehash_params_t params);
 
 /**
- * Squeeze `len` bytes data into output buffer `dst` from TupleHash256
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * TupleHash256 XOF context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
  *
  * Note: TupleHash256 and TupleHash256 XOF produce different output,
  * because TupleHash256 encodes the fixed output size as part of the
@@ -971,8 +971,8 @@ typedef struct {
  *
  * Note: This implementation of ParallelHash128 is sequential, not
  * @param[in] params ParallelHash128 configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -988,8 +988,8 @@ void parallelhash128(const parallelhash_params_t params, const uint8_t *src, con
  * parallel.
  *
  * @param[in] params ParallelHash256 configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  */
@@ -1022,15 +1022,15 @@ void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t 
  * parallel.
  *
  * @param[in/out] hash ParallelHash128 XOF context.
- * @param[in] src Input data buffer.
- * @param[in] len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  */
 void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *src, const size_t len);
 
 /**
- * Squeeze `len` bytes data into output buffer `dst` from ParallelHash128
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * ParallelHash128 XOF context `xof`.  Can be called iteratively to
+ * squeeze output data in chunks.
  *
  * Note: ParallelHash128 and ParallelHash128 XOF produce different
  * output, because ParallelHash128 encodes the fixed output size as part
@@ -1050,8 +1050,8 @@ void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_
  * Initialize internal ParallelHash128 XOF (ParallelHash eXtendable
  * Output Function, as defined in section 6.3.1 of NIST SP 800-185)
  * context with configuration parameters `params`, absorb data in buffer
- * `src` of length `src_len` bytes into context, thenqueeze `dst_len`
- * bytes data into output buffer `dst`.
+ * `src` of length `src_len` bytes into context, then squeeze `dst_len`
+ * bytes of output into destination buffer `dst`.
  *
  * Note: ParallelHash128 and ParallelHash128 XOF produce different
  * output, because ParallelHash128 encodes the fixed output size as part
@@ -1062,8 +1062,8 @@ void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_
  * parallel.
  *
  * @param[in] params ParallelHash configuration parameters.
- * @param[in] src Input data buffer.
- * @param[in] src_len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] dst_len Destination buffer length, in bytes.
  */
@@ -1096,15 +1096,15 @@ void parallelhash256_xof_init(parallelhash_t *hash, const parallelhash_params_t 
  * parallel.
  *
  * @param[in/out] hash ParallelHash256 XOF context.
- * @param[in] src Input data buffer.
- * @param[in] len Input data buffer length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] len Source buffer length, in bytes.
  */
 void parallelhash256_xof_absorb(parallelhash_t *hash, const uint8_t *src, const size_t len);
 
 /**
- * Squeeze `len` bytes data into output buffer `dst` from ParallelHash256
- * XOF context `xof`.  Can be called iteratively to squeeze output data
- * in chunks.
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * ParallelHash256 XOF context `xof`.  Can be called iteratively to
+ * squeeze output data in chunks.
  *
  * Note: ParallelHash256 and ParallelHash256 XOF produce different
  * output, because ParallelHash256 encodes the fixed output size as part
@@ -1123,9 +1123,9 @@ void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_
 /**
  * Initialize internal ParallelHash256 XOF (ParallelHash eXtendable
  * Output Function, as defined in section 6.3.1 of NIST SP 800-185)
- * context with configuration parameters `params`, absorb data in buffer
- * `src` of length `src_len` bytes into context, thenqueeze `dst_len`
- * bytes data into output buffer `dst`.
+ * context with configuration parameters `params`, absorb `src_len`
+ * bytes if input from source buffer `src`, then squeeze `dst_len`
+ * bytes of output into destination buffer `dst`.
  *
  * Note: ParallelHash256 and ParallelHash256 XOF produce different
  * output, because ParallelHash256 encodes the fixed output size as part
