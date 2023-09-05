@@ -103,7 +103,7 @@ void sha3_256_init(sha3_t *hash);
 _Bool sha3_256_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 
 /**
- * Finalize SHA3-256 hash context and write 28 bytes of output to
+ * Finalize SHA3-256 hash context and write 32 bytes of output to
  * destination buffer `dst`.
  *
  * @param[in/out] hash SHA3-256 hash context.
@@ -143,7 +143,7 @@ void sha3_384_init(sha3_t *hash);
 _Bool sha3_384_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 
 /**
- * Finalize SHA3-384 hash context and write 28 bytes of output to
+ * Finalize SHA3-384 hash context and write 48 bytes of output to
  * destination buffer `dst`.
  *
  * @param[in/out] hash SHA3-384 hash context.
@@ -183,13 +183,195 @@ void sha3_512_init(sha3_t *hash);
 _Bool sha3_512_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 
 /**
- * Finalize SHA3-512 hash context and write 28 bytes of output to
+ * Finalize SHA3-512 hash context and write 64 bytes of output to
  * destination buffer `dst`.
  *
  * @param[in/out] hash SHA3-512 hash context.
  * @param[out] dst Destination buffer.  Must be at least 64 bytes in length.
  */
 void sha3_512_final(sha3_t *hash, uint8_t dst[64]);
+
+/**
+ * Calculate HMAC-SHA3-224 (FIPS 202, Section 7) of key in buffer `k` of
+ * length `k_len` and input message in buffer `m` of length `m_len`
+ * bytes and write 28 bytes of output to destination buffer `dst`.
+ *
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ * @param[in] m Input message.
+ * @param[in] m_len Input message length, in bytes.
+ * @param[out] dst Destination array.  Must be at least 28 bytes in length.
+ */
+void hmac_sha3_224(const uint8_t *k, const size_t k_len, const uint8_t *m, const size_t m_len, uint8_t dst[28]);
+
+/**
+ * Calculate HMAC-SHA3-256 (FIPS 202, Section 7) of key in buffer `k` of
+ * length `k_len` and input message in buffer `m` of length `m_len`
+ * bytes and write 32 bytes of output to destination buffer `dst`.
+ *
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ * @param[in] m Input message.
+ * @param[in] m_len Input message length, in bytes.
+ * @param[out] dst Destination array.  Must be at least 32 bytes in length.
+ */
+void hmac_sha3_256(const uint8_t *k, const size_t k_len, const uint8_t *m, const size_t m_len, uint8_t dst[32]);
+
+/**
+ * Calculate HMAC-SHA3-384 (FIPS 202, Section 7) of key in buffer `k` of
+ * length `k_len` and input message in buffer `m` of length `m_len`
+ * bytes and write 48 bytes of output to destination buffer `dst`.
+ *
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ * @param[in] m Input message.
+ * @param[in] m_len Input message length, in bytes.
+ * @param[out] dst Destination array.  Must be at least 48 bytes in length.
+ */
+void hmac_sha3_384(const uint8_t *k, const size_t k_len, const uint8_t *m, const size_t m_len, uint8_t dst[48]);
+
+/**
+ * Calculate HMAC-SHA3-512 (FIPS 202, Section 7) of key in buffer `k` of
+ * length `k_len` and input message in buffer `m` of length `m_len`
+ * bytes and write 64 bytes of output to destination buffer `dst`.
+ *
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ * @param[in] m Input message.
+ * @param[in] m_len Input message length, in bytes.
+ * @param[out] dst Destination array.  Must be at least 64 bytes in length.
+ */
+void hmac_sha3_512(const uint8_t *k, const size_t k_len, const uint8_t *m, const size_t m_len, uint8_t dst[64]);
+
+// HMAC-SHA3 (Hash-based Message Authentication Code) context.
+typedef struct {
+  sha3_t inner, outer;
+  _Bool finalized;
+} hmac_sha3_t;
+
+/**
+ * Initialize HMAC-SHA3-224 (FIPS 202, Section 7) context.
+ *
+ * @param[out] hmac HMAC-SHA3-224 context.
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ */
+void hmac_sha3_224_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into HMAC-SHA3-224
+ * context `hmac`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hmac HMAC-SHA3-224 context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool hmac_sha3_224_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize HMAC-SHA3-224 hash context and write 28 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hmac HMAC-SHA3-224 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 28 bytes in length.
+ */
+void hmac_sha3_224_final(hmac_sha3_t *hmac, uint8_t dst[28]);
+
+/**
+ * Initialize HMAC-SHA3-256 (FIPS 202, Section 7) context.
+ *
+ * @param[out] hmac HMAC-SHA3-256 context.
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ */
+void hmac_sha3_256_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into HMAC-SHA3-256
+ * context `hmac`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hmac HMAC-SHA3-256 context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool hmac_sha3_256_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize HMAC-SHA3-256 hash context and write 32 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hmac HMAC-SHA3-256 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 32 bytes in length.
+ */
+void hmac_sha3_256_final(hmac_sha3_t *hmac, uint8_t dst[32]);
+
+/**
+ * Initialize HMAC-SHA3-384 (FIPS 202, Section 7) context.
+ *
+ * @param[out] hmac HMAC-SHA3-384 context.
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ */
+void hmac_sha3_384_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into HMAC-SHA3-384
+ * context `hmac`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hmac HMAC-SHA3-384 context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool hmac_sha3_384_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize HMAC-SHA3-384 hash context and write 48 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hmac HMAC-SHA3-384 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 48 bytes in length.
+ */
+void hmac_sha3_384_final(hmac_sha3_t *hmac, uint8_t dst[48]);
+
+/**
+ * Initialize HMAC-SHA3-512 (FIPS 202, Section 7) context.
+ *
+ * @param[out] hmac HMAC-SHA3-512 context.
+ * @param[in] k Key.
+ * @param[in] k_len Key length, in bytes.
+ */
+void hmac_sha3_512_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len);
+
+/**
+ * Absorb input data in `src` of length `len` bytes into HMAC-SHA3-512
+ * context `hmac`.  Can be called iteratively to absorb input data in
+ * chunks.
+ *
+ * @param[in/out] hmac HMAC-SHA3-512 context.
+ * @param[in] src Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been finalized).
+ */
+_Bool hmac_sha3_512_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len);
+
+/**
+ * Finalize HMAC-SHA3-512 hash context and write 64 bytes of output to
+ * destination buffer `dst`.
+ *
+ * @param[in/out] hmac HMAC-SHA3-512 hash context.
+ * @param[out] dst Destination buffer.  Must be at least 64 bytes in length.
+ */
+void hmac_sha3_512_final(hmac_sha3_t *hmac, uint8_t dst[64]);
 
 /**
  * Hash input message in buffer `m` of length `m_len` bytes with
