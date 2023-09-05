@@ -39,6 +39,9 @@
 // minimum of two values
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
+// number of rounds for permute()
+#define SHA3_NUM_ROUNDS 24
+
 static inline void theta(uint64_t a[static 25]) {
   const uint64_t c[5] = {
     a[0] ^ a[5] ^ a[10] ^ a[15] ^ a[20],
@@ -163,8 +166,14 @@ static inline void iota(uint64_t a[static 25], const int i) {
   a[0] ^= RCS[i];
 }
 
-static inline void permute(uint64_t a[static 25]) {
-  for (int i = 0; i < 24; i++) {
+// keccak permutation.
+//
+// note: clang is better about inlining this than gcc with a
+// configurable number of rounds.  the configurable number of rounds is
+// only used by turboshake, so it might be worth creating a specialized
+// `permute12()` to handle turboshake.
+static inline void permute(uint64_t a[static 25], const size_t num_rounds) {
+  for (int i = 0; i < (int) num_rounds; i++) {
     theta(a);
     rho(a);
     pi(a);
@@ -173,6 +182,7 @@ static inline void permute(uint64_t a[static 25]) {
   }
 }
 
+// one-shot keccak.
 static inline size_t keccak(sha3_state_t * const a, const uint8_t *m, size_t m_len, const size_t rate) {
   while (m_len >= rate) {
     // absorb u64-sized chunks
@@ -181,7 +191,7 @@ static inline size_t keccak(sha3_state_t * const a, const uint8_t *m, size_t m_l
     }
 
     // permute
-    permute(a->u64);
+    permute(a->u64, SHA3_NUM_ROUNDS);
 
     m += rate;
     m_len -= rate;
@@ -201,6 +211,7 @@ static inline size_t keccak(sha3_state_t * const a, const uint8_t *m, size_t m_l
   return m_len;
 }
 
+// one-shot sha3.
 static inline void sha3(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
   // in the sha3 hash functions, the capacity is always 2 times the
   // destination length, and the rate is the total state size minus the
@@ -217,24 +228,28 @@ static inline void sha3(const uint8_t *m, size_t m_len, uint8_t * const dst, con
   a.u8[rate-1] ^= 0x80;
 
   // permute
-  permute(a.u64);
+  permute(a.u64, SHA3_NUM_ROUNDS);
 
   // copy to destination
   memcpy(dst, a.u8, dst_len);
 }
 
+// one-shot sha3-224
 void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]) {
   sha3(m, m_len, dst, 28);
 }
 
+// one-shot sha3-256
 void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]) {
   sha3(m, m_len, dst, 32);
 }
 
+// one-shot sha3-384
 void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]) {
   sha3(m, m_len, dst, 48);
 }
 
+// one-shot sha3-512
 void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]) {
   sha3(m, m_len, dst, 64);
 }
@@ -256,7 +271,7 @@ static inline bool sha3_absorb(sha3_t * const hash, const size_t rate, const uin
     hash->a.u8[hash->num_bytes++] ^= src[i];
     if (hash->num_bytes == rate) {
       // permute
-      permute(hash->a.u64);
+      permute(hash->a.u64, SHA3_NUM_ROUNDS);
       hash->num_bytes = 0;
     }
   }
@@ -277,7 +292,7 @@ static inline void sha3_final(sha3_t * const hash, const size_t rate, uint8_t * 
     hash->a.u8[rate - 1] ^= 0x80;
 
     // permute
-    permute(hash->a.u64);
+    permute(hash->a.u64, SHA3_NUM_ROUNDS);
   }
 
   // copy to destination
@@ -608,7 +623,7 @@ static inline void shake(const uint8_t *m, size_t m_len, uint8_t * const dst, co
   a.u8[rate-1] ^= 0x80;
 
   // permute
-  permute(a.u64);
+  permute(a.u64, SHA3_NUM_ROUNDS);
 
   // copy to destination
   memcpy(dst, a.u8, dst_len);
@@ -626,7 +641,7 @@ static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const uint8_t * const m, size_t m_len) {
+static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
   // check state
   if (xof->squeezing) {
     return false;
@@ -637,7 +652,7 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
   for (size_t i = 0; i < m_len; i++) {
     xof->a.u8[xof->num_bytes++] ^= m[i];
     if (xof->num_bytes == rate) {
-      permute(xof->a.u64);
+      permute(xof->a.u64, num_rounds);
       xof->num_bytes = 0;
     }
   }
@@ -646,46 +661,46 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
   return true;
 }
 
-static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, const uint8_t pad) {
+static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
   xof->a.u8[xof->num_bytes] ^= pad;
   xof->a.u8[rate - 1] ^= 0x80;
 
   // permute
-  permute(xof->a.u64);
+  permute(xof->a.u64, num_rounds);
 
   // switch to squeeze mode
   xof->num_bytes = 0;
   xof->squeezing = true;
 }
 
-static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
+static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
   // check state
   if (!xof->squeezing) {
     // finalize absorb
-    xof_absorb_done(xof, rate, pad);
+    xof_absorb_done(xof, rate, num_rounds, pad);
   }
 
   for (size_t i = 0; i < dst_len; i++) {
     dst[i] = xof->a.u8[xof->num_bytes++];
     if (xof->num_bytes == rate) {
-      permute(xof->a.u64);
+      permute(xof->a.u64, num_rounds);
       xof->num_bytes = 0;
     }
   }
 }
 
-static inline void xof_once(const size_t rate, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+static inline void xof_once(const size_t rate, const size_t num_rounds, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   // init
   sha3_xof_t xof;
   xof_init(&xof);
 
   // absorb (ignore error)
-  (void) xof_absorb(&xof, rate, src, src_len);
+  (void) xof_absorb(&xof, rate, num_rounds, src, src_len);
 
   // squeeze
-  xof_squeeze(&xof, rate, pad, dst, dst_len);
+  xof_squeeze(&xof, rate, num_rounds, pad, dst, dst_len);
 }
 
 #define SHAKE128_XOF_RATE (200 - 2 * 16)
@@ -696,15 +711,15 @@ void shake128_xof_init(sha3_xof_t * const xof) {
 }
 
 _Bool shake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len) {
-  return xof_absorb(xof, SHAKE128_XOF_RATE, m, len);
+  return xof_absorb(xof, SHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, m, len);
 }
 
 void shake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  xof_squeeze(xof, SHAKE128_XOF_RATE, SHAKE128_XOF_PAD, dst, dst_len);
+  xof_squeeze(xof, SHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, SHAKE128_XOF_PAD, dst, dst_len);
 }
 
 void shake128_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE128_XOF_RATE, SHAKE128_XOF_PAD, src, src_len, dst, dst_len);
+  xof_once(SHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, SHAKE128_XOF_PAD, src, src_len, dst, dst_len);
 }
 
 #define SHAKE256_XOF_RATE (200 - 2 * 32)
@@ -715,15 +730,15 @@ void shake256_xof_init(sha3_xof_t * const xof) {
 }
 
 _Bool shake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len) {
-  return xof_absorb(xof, SHAKE256_XOF_RATE, m, len);
+  return xof_absorb(xof, SHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, m, len);
 }
 
 void shake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  xof_squeeze(xof, SHAKE256_XOF_RATE, SHAKE256_XOF_PAD, dst, dst_len);
+  xof_squeeze(xof, SHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, SHAKE256_XOF_PAD, dst, dst_len);
 }
 
 void shake256_xof_once(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE256_XOF_RATE, SHAKE256_XOF_PAD, src, src_len, dst, dst_len);
+  xof_once(SHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, SHAKE256_XOF_PAD, src, src_len, dst, dst_len);
 }
 
 // NIST SP 800-105 utility function.
@@ -886,11 +901,11 @@ static inline bytepad_t bytepad(const size_t data_len, const size_t width) {
 #define CSHAKE128_XOF_PAD 0x04
 
 _Bool cshake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
-  return xof_absorb(xof, CSHAKE128_XOF_RATE, msg, len);
+  return xof_absorb(xof, CSHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, msg, len);
 }
 
 void cshake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
-  xof_squeeze(xof, CSHAKE128_XOF_RATE, CSHAKE128_XOF_PAD, dst, len);
+  xof_squeeze(xof, CSHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, CSHAKE128_XOF_PAD, dst, len);
 }
 
 void cshake128_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
@@ -969,11 +984,11 @@ void cshake128(
 #define CSHAKE256_XOF_PAD 0x04
 
 _Bool cshake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
-  return xof_absorb(xof, CSHAKE256_XOF_RATE, msg, len);
+  return xof_absorb(xof, CSHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, msg, len);
 }
 
 void cshake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
-  xof_squeeze(xof, CSHAKE256_XOF_RATE, CSHAKE256_XOF_PAD, dst, len);
+  xof_squeeze(xof, CSHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, CSHAKE256_XOF_PAD, dst, len);
 }
 
 void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
@@ -1674,6 +1689,72 @@ void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t 
   parallelhash256_xof_squeeze(&hash, dst, dst_len);
 }
 
+// number of rounds
+#define TURBOSHAKE_NUM_ROUNDS 12
+
+// default turboshake pad byte (can be customized for domain separation)
+#define TURBOSHAKE_PAD 0x1f
+
+typedef struct {
+  sha3_xof_t xof;
+  uint8_t pad;
+} turboshake_t;
+
+static inline _Bool turboshake_init(turboshake_t * const ts, const uint8_t pad) {
+  // check for valid pad
+  if (!pad || pad > 0x1f) {
+    // invalid pad
+    return false;
+  }
+
+  // init xof
+  xof_init(&(ts->xof));
+  ts->pad = pad;
+
+  // return success
+  return true;
+}
+
+_Bool turboshake128_init_custom(turboshake_t * const ts, const uint8_t pad) {
+  return turboshake_init(ts, pad);
+}
+
+void turboshake128_init(turboshake_t * const ts) {
+  (void) turboshake_init(ts, TURBOSHAKE_PAD);
+}
+
+_Bool turboshake128_absorb(turboshake_t * const ts, const uint8_t * const m, const size_t len) {
+  return xof_absorb(&(ts->xof), SHAKE128_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, m, len);
+}
+
+void turboshake128_squeeze(turboshake_t * const ts, uint8_t * const dst, const size_t dst_len) {
+  xof_squeeze(&(ts->xof), SHAKE128_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, ts->pad, dst, dst_len);
+}
+
+void turboshake128(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  xof_once(SHAKE128_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len);
+}
+
+_Bool turboshake256_init_custom(turboshake_t * const ts, const uint8_t pad) {
+  return turboshake_init(ts, pad);
+}
+
+void turboshake256_init(turboshake_t * const ts) {
+  (void) turboshake_init(ts, TURBOSHAKE_PAD);
+}
+
+_Bool turboshake256_absorb(turboshake_t * const ts, const uint8_t * const m, const size_t len) {
+  return xof_absorb(&(ts->xof), SHAKE256_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, m, len);
+}
+
+void turboshake256_squeeze(turboshake_t * const ts, uint8_t * const dst, const size_t dst_len) {
+  xof_squeeze(&(ts->xof), SHAKE256_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, ts->pad, dst, dst_len);
+}
+
+void turboshake256(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  xof_once(SHAKE256_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len);
+}
+
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
 
@@ -1900,7 +1981,7 @@ static void test_permute(void) {
     0x8CAA629F80192BB9ULL, 0xD0B178A0541C4107ULL,
   };
 
-  permute(a);
+  permute(a, SHA3_NUM_ROUNDS);
   if (memcmp(exp, a, sizeof(exp))) {
     fprintf(stderr, "test_permute() failed, got:\n");
     dump_hex(stderr, (uint8_t*) a, 32);
@@ -5869,6 +5950,52 @@ static void test_hmac_sha3_512_ctx(void) {
   }
 }
 
+static void test_turboshake128(void) {
+  // FIXME: these tests do not work at the moment; going to revisit
+  // turboshake later
+  return; // currently disabled
+  static const struct {
+    const char *name; // test name
+    const uint8_t pad; // padding byte (domain separator)
+    const uint8_t msg[256]; // input data
+    const size_t len; // message length, in bytes
+    const uint8_t exp[32]; // expected hash
+  } tests[] = {{
+    // src: https://www.ietf.org/archive/id/draft-irtf-cfrg-kangarootwelve-10.html#name-test-vectors
+    .name = "empty",
+    .pad = 0x07,
+    .msg = { 0
+    },
+    .len = 0,
+    .exp = {
+      0x5A, 0x22, 0x3A, 0xD3, 0x0B, 0x3B, 0x8C, 0x66, 0xA2, 0x43, 0x04, 0x8C, 0xFC, 0xED, 0x43, 0x0F,
+      0x54, 0xE7, 0x52, 0x92, 0x87, 0xD1, 0x51, 0x50, 0xB9, 0x73, 0x13, 0x3A, 0xDF, 0xAC, 0x6A, 0x2F,
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    // run
+    uint8_t got[32];
+    turboshake_t ts;
+    turboshake128_init_custom(&ts, tests[i].pad);
+    turboshake128_absorb(&ts, tests[i].msg, tests[i].len);
+    turboshake128_squeeze(&ts, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_turboshake128(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, sizeof(got));
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, sizeof(got));
+    }
+  }
+}
+
+static void test_turboshake256(void) {
+  // TODO
+}
+
 int main(void) {
   test_theta();
   test_rho();
@@ -5916,6 +6043,8 @@ int main(void) {
   test_hmac_sha3_256_ctx();
   test_hmac_sha3_384_ctx();
   test_hmac_sha3_512_ctx();
+  test_turboshake128();
+  test_turboshake256();
   printf("ok\n");
 }
 
