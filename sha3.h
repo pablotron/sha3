@@ -25,7 +25,7 @@
  * - TupleHash256 and TupleHash256-XOF
  * - ParallelHash128 and ParallelHash128-XOF
  * - ParallelHash256 and ParallelHash256-XOF
- * - TurboHash128 and TurboHash256
+ * - TurboSHAKE128 and TurboSHAKE256
  */
 
 #ifndef SHA3_H
