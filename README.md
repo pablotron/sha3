@@ -11,19 +11,27 @@
 * HMAC-SHA3-256
 * HMAC-SHA3-384
 * HMAC-SHA3-512
-* SHAKE128 (fixed and XOF)
-* SHAKE256 (fixed and XOF)
-* cSHAKE128 (fixed and XOF)
-* cSHAKE256 (fixed and XOF)
-* KMAC128 (fixed and XOF)
-* KMAC256 (fixed and XOF)
-* TupleHash128 (fixed and XOF)
-* TupleHash256 (fixed and XOF)
-* ParallelHash128 (fixed and XOF)
-* ParallelHash256 (fixed and XOF)
+* SHAKE128 and SHAKE128-XOF
+* SHAKE256 and SHAKE256-XOF
+* cSHAKE128 and cSHAKE128-XOF
+* cSHAKE256 and cSHAKE256-XOF
+* KMAC128 and KMAC128-XOF
+* KMAC256 and KMAC256-XOF
+* TupleHash128 and TupleHash128-XOF
+* TupleHash256 and TupleHash256-XOF
+* ParallelHash128 and ParallelHash128-XOF
+* ParallelHash256 and ParallelHash256-XOF
+* TurboHash128 and TurboHash256 (incomplete)
 
 Use `make` to build a minimal test application, and `make test` to run
 the test suite.
+
+## References
+
+* [FIPS 202 - SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions][FIPS 202]
+* [NIST SP 800-185 - SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash][800-185]
+* [FIPS 198-1 - The Keyed-Hash Message Authentication Code (HMAC)][FIPS 198-1]
+* [NIST CSRC: Cryptographic Standards and Guidelines: Examples with Intermediate Values][csrc-examples]
 
 [C11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
   "ISO/IEC 9899:2011"
@@ -33,3 +41,7 @@ the test suite.
   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
 [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
+[FIPS 198-1]: https://csrc.nist.gov/pubs/fips/198-1/final
+  "The Keyed-Hash Message Authentication Code (HMAC)"
+[csrc-examples]: https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
+  "NIST CSRC: Cryptographic Standards and Guidelines: Examples with Intermediate Values"
