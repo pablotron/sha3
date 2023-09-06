@@ -26,6 +26,7 @@
  * - ParallelHash128 and ParallelHash128-XOF
  * - ParallelHash256 and ParallelHash256-XOF
  * - TurboSHAKE128 and TurboSHAKE256
+ * - KangarooTwelve
  */
 
 #ifndef SHA3_H

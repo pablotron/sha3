@@ -22,6 +22,7 @@
 * ParallelHash128 and ParallelHash128-XOF
 * ParallelHash256 and ParallelHash256-XOF
 * TurboSHAKE128 and TurboSHAKE256
+* KangarooTwelve
 
 Use `make` to build a minimal test application, and `make test` to run
 the test suite.
