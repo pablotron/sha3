@@ -1156,6 +1156,22 @@ void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t 
 void turboshake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 /**
+ * Initialize internal TurboSHAKE128 context with custom padding byte
+ * `pad`, absorb `src_len` bytes of input from in source buffer `src`,
+ * then squeeze `dst_len` bytes of output into destination buffer `dst`.
+ *
+ * Note: The padding byte value must be in the range [0x01, 0x7F] and
+ * can be used for domain separation.
+ *
+ * @param[in] pad Padding byte.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
+void turboshake128_custom(const uint8_t pad, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
  * Initialize internal TurboSHAKE256 context, absorb `src_len` bytes of
  * input from in source buffer `src`, then squeeze `dst_len` bytes of output
  * into destination buffer `dst`.
@@ -1166,6 +1182,22 @@ void turboshake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const
  * @param[in] dst_len Destination buffer length, in bytes.
  */
 void turboshake256(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal TurboSHAKE256 context with custom padding byte
+ * `pad`, absorb `src_len` bytes of input from in source buffer `src`,
+ * then squeeze `dst_len` bytes of output into destination buffer `dst`.
+ *
+ * Note: The padding byte value must be in the range [0x01, 0x7F] and
+ * can be used for domain separation.
+ *
+ * @param[in] pad Padding byte.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
+void turboshake256_custom(const uint8_t pad, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 // TurboShake XOF context.
 typedef struct {

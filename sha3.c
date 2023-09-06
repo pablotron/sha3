@@ -1695,7 +1695,7 @@ void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t 
 // default turboshake pad byte (can be customized for domain separation)
 #define TURBOSHAKE_PAD 0x1f
 
-// init turboeshake context with given pad byte.  returns false if the
+// init turboshake context with given pad byte.  returns false if the
 // pad byte is out of range.
 static inline _Bool turboshake_init(turboshake_t * const ts, const uint8_t pad) {
   // check for valid pad
@@ -1736,6 +1736,10 @@ void turboshake128(const uint8_t * const src, const size_t src_len, uint8_t * co
   xof_once(SHAKE128_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len);
 }
 
+void turboshake128_custom(const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  xof_once(SHAKE128_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len);
+}
+
 _Bool turboshake256_init_custom(turboshake_t * const ts, const uint8_t pad) {
   return turboshake_init(ts, pad);
 }
@@ -1754,6 +1758,10 @@ void turboshake256_squeeze(turboshake_t * const ts, uint8_t * const dst, const s
 
 void turboshake256(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   xof_once(SHAKE256_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len);
+}
+
+void turboshake256_custom(const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
+  xof_once(SHAKE256_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len);
 }
 
 #ifdef SHA3_TEST
