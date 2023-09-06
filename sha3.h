@@ -1145,8 +1145,8 @@ void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t 
 
 /**
  * Initialize internal TurboSHAKE128 context, absorb `src_len` bytes of
- * input from in source buffer `src`, then squeeze `dst_len` bytes of output
- * into destination buffer `dst`.
+ * input from source buffer `src`, then squeeze `dst_len` bytes of
+ * output into destination buffer `dst`.
  *
  * @param[in] src Source buffer.
  * @param[in] src_len Source buffer length, in bytes.
@@ -1157,8 +1157,8 @@ void turboshake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const
 
 /**
  * Initialize internal TurboSHAKE128 context with custom padding byte
- * `pad`, absorb `src_len` bytes of input from in source buffer `src`,
- * then squeeze `dst_len` bytes of output into destination buffer `dst`.
+ * `pad`, absorb `src_len` bytes of input from source buffer `src`, then
+ * squeeze `dst_len` bytes of output into destination buffer `dst`.
  *
  * Note: The padding byte value must be in the range [0x01, 0x7F] and
  * can be used for domain separation.
@@ -1173,8 +1173,8 @@ void turboshake128_custom(const uint8_t pad, const uint8_t *src, const size_t sr
 
 /**
  * Initialize internal TurboSHAKE256 context, absorb `src_len` bytes of
- * input from in source buffer `src`, then squeeze `dst_len` bytes of output
- * into destination buffer `dst`.
+ * input from source buffer `src`, then squeeze `dst_len` bytes of
+ * output into destination buffer `dst`.
  *
  * @param[in] src Source buffer.
  * @param[in] src_len Source buffer length, in bytes.
@@ -1185,8 +1185,8 @@ void turboshake256(const uint8_t *src, const size_t src_len, uint8_t *dst, const
 
 /**
  * Initialize internal TurboSHAKE256 context with custom padding byte
- * `pad`, absorb `src_len` bytes of input from in source buffer `src`,
- * then squeeze `dst_len` bytes of output into destination buffer `dst`.
+ * `pad`, absorb `src_len` bytes of input from source buffer `src`, then
+ * squeeze `dst_len` bytes of output into destination buffer `dst`.
  *
  * Note: The padding byte value must be in the range [0x01, 0x7F] and
  * can be used for domain separation.
@@ -1225,7 +1225,7 @@ void turboshake128_init(turboshake_t *ts);
 _Bool turboshake128_init_custom(turboshake_t *ts, const uint8_t pad);
 
 /**
- * Absorb `src_len` bytes of input from in source buffer `src` into
+ * Absorb `src_len` bytes of input from source buffer `src` into
  * TurboSHAKE128 context `ts`.  Can be called iteratively to absorb
  * input data in chunks.
  *
@@ -1268,7 +1268,7 @@ void turboshake256_init(turboshake_t *ts);
 _Bool turboshake256_init_custom(turboshake_t *ts, const uint8_t pad);
 
 /**
- * Absorb `src_len` bytes of input from in source buffer `src` into
+ * Absorb `src_len` bytes of input from source buffer `src` into
  * TurboSHAKE256 context `ts`.  Can be called iteratively to absorb
  * input data in chunks.
  *
