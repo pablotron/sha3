@@ -870,9 +870,9 @@ static inline size_t right_encode(uint8_t buf[static 9], const uint64_t n) {
   }
 }
 
-// kangarootwelve utility function
+// kangarootwelve length encoding.
 // (similar to right_encode(), but slightly different)
-static inline size_t kangarootwelve_length_encode(uint8_t buf[static 9], const uint64_t n) {
+static inline size_t k12_length_encode(uint8_t buf[static 9], const uint64_t n) {
   if (n > 0x00ffffffffffffffULL) {
     buf[0] = (n >> 56) & 0xff;
     buf[1] = (n >> 40) & 0xff;
@@ -1834,175 +1834,183 @@ void turboshake256_custom(const uint8_t pad, const uint8_t * const src, const si
 }
 
 // kangarootwelve block size, in bytes
-#define KT_BLOCK_LEN 8192
+#define K12_BLOCK_LEN 8192
 
 // pad byte for single kangarootwelve chunk (<= 8192 bytes)
-#define KT_PAD_SINGLE 0x07
+#define K12_PAD_SINGLE 0x07
 
 // pad byte for root kangarootwelve turboshake instance (> 8192 bytes)
-#define KT_PAD_ROOT 0x06
+#define K12_PAD_ROOT 0x06
 
 // pad byte for child kangarootwelve turboshake instances (> 8192 bytes)
-#define KT_PAD_CHILD 0x0B
+#define K12_PAD_CHILD 0x0B
 
-// private kangarootwelve context
+// private kangarootwelve big context
 typedef struct {
-  turboshake_t root, // root turboshake context
+  turboshake_t *root, // root turboshake context
                curr; // current child turboshake context
   size_t num_bytes,  // num bytes in current block
          num_blocks; // total number of blocks
-} kangarootwelve_t;
+} k12_big_t;
 
-// init kangarootwelve context
-static void kangarootwelve_init(kangarootwelve_t * const kt) {
-  turboshake128_init_custom(&(kt->root), KT_PAD_ROOT);
-  kt->num_bytes = 0;
-  kt->num_blocks = 0;
+// init kangarootwelve big context
+static void k12_big_init(k12_big_t * const big, turboshake_t * const root) {
+  // init root context
+  turboshake128_init_custom(root, K12_PAD_ROOT);
+
+  big->root = root;
+  big->num_bytes = 0;
+  big->num_blocks = 0;
 }
 
 // absorb data in child context
-static void kangarootwelve_child_absorb(kangarootwelve_t * const kt, const uint8_t *src, size_t src_len) {
+static void k12_big_child_absorb(k12_big_t * const big, const uint8_t *src, size_t src_len) {
   while (src_len > 0) {
-    const size_t len = MIN(KT_BLOCK_LEN - kt->num_bytes, src_len);
+    const size_t len = MIN(K12_BLOCK_LEN - big->num_bytes, src_len);
 
     // absorb into child context
-    turboshake128_absorb(&(kt->curr), src, len);
+    turboshake128_absorb(&(big->curr), src, len);
 
     src += len;
     src_len -= len;
-    kt->num_bytes += len;
+    big->num_bytes += len;
 
-    if (kt->num_bytes == KT_BLOCK_LEN) {
+    if (big->num_bytes == K12_BLOCK_LEN) {
       // hash child
       uint8_t buf[32] = { 0 };
-      turboshake128_squeeze(&(kt->curr), buf, sizeof(buf));
+      turboshake128_squeeze(&(big->curr), buf, sizeof(buf));
 
       // absorb hash into root
-      turboshake128_absorb(&(kt->root), buf, sizeof(buf));
+      turboshake128_absorb(big->root, buf, sizeof(buf));
 
       // reset child
-      turboshake128_init_custom(&(kt->curr), KT_PAD_CHILD);
+      turboshake128_init_custom(&(big->curr), K12_PAD_CHILD);
 
       // clear byte count, increment block count
-      kt->num_bytes = 0;
-      kt->num_blocks++;
+      big->num_bytes = 0;
+      big->num_blocks++;
     }
   }
 }
 
 // absorb data in root context
 // (passes excess data to child context)
-static void kangarootwelve_root_absorb(kangarootwelve_t * const kt, const uint8_t *src, size_t src_len) {
+static void k12_big_root_absorb(k12_big_t * const big, const uint8_t *src, size_t src_len) {
   while (src_len > 0) {
-    const size_t len = MIN(KT_BLOCK_LEN - kt->num_bytes, src_len);
+    const size_t len = MIN(K12_BLOCK_LEN - big->num_bytes, src_len);
 
     // absorb into root context
-    turboshake128_absorb(&(kt->root), src, len);
+    turboshake128_absorb(big->root, src, len);
 
     src += len;
     src_len -= len;
-    kt->num_bytes += len;
+    big->num_bytes += len;
 
-    if (kt->num_bytes == KT_BLOCK_LEN) {
+    if (big->num_bytes == K12_BLOCK_LEN) {
       // absorb trailer for first block
       uint8_t buf[8] = { 3, 0, 0, 0, 0, 0, 0, 0 };
-      turboshake128_absorb(&(kt->root), buf, sizeof(buf));
+      turboshake128_absorb(big->root, buf, sizeof(buf));
 
       // init child
-      turboshake128_init_custom(&(kt->curr), KT_PAD_CHILD);
+      turboshake128_init_custom(&(big->curr), K12_PAD_CHILD);
 
       // clear byte count, increment block count
-      kt->num_bytes = 0;
-      kt->num_blocks++;
+      big->num_bytes = 0;
+      big->num_blocks++;
 
       // absorb rest of source in child
-      kangarootwelve_child_absorb(kt, src, src_len);
+      k12_big_child_absorb(big, src, src_len);
       return;
     }
   }
 }
 
 // absorb data
-static void kangarootwelve_absorb(kangarootwelve_t * const kt, const uint8_t *src, size_t src_len) {
-  if (kt->num_blocks) {
+static void k12_big_absorb(k12_big_t * const big, const uint8_t *src, size_t src_len) {
+  if (big->num_blocks) {
     // absorb successive blocks in child context
-    kangarootwelve_child_absorb(kt, src, src_len);
+    k12_big_child_absorb(big, src, src_len);
   } else {
     // absorb first block in root context
-    kangarootwelve_root_absorb(kt, src, src_len);
+    k12_big_root_absorb(big, src, src_len);
   }
 }
 
-// finalize kangarootwelve context and squeeze data into destination
-static void kangarootwelve_squeeze(kangarootwelve_t * const kt, uint8_t *dst, const size_t dst_len) {
-  if (kt->num_bytes > 0) {
+// finalize "big" kangarootwelve context
+static void k12_big_absorb_done(k12_big_t * const big) {
+  if (big->num_bytes > 0) {
     // hash child, absorb into root
     uint8_t buf[32] = { 0 };
-    turboshake128_squeeze(&(kt->curr), buf, sizeof(buf));
-    turboshake128_absorb(&(kt->root), buf, sizeof(buf));
+    turboshake128_squeeze(&(big->curr), buf, sizeof(buf));
+    turboshake128_absorb(big->root, buf, sizeof(buf));
   }
 
   // absorb block count
   uint8_t buf[9];
-  const size_t buf_len = kangarootwelve_length_encode(buf, kt->num_blocks);
-  turboshake128_absorb(&(kt->root), buf, buf_len);
+  const size_t buf_len = k12_length_encode(buf, big->num_blocks);
+  turboshake128_absorb(big->root, buf, buf_len);
 
   // absorb tail
   static const uint8_t tail[2] = { 0xff, 0xff };
-  turboshake128_absorb(&(kt->root), tail, sizeof(tail));
-
-  // squeeze
-  turboshake128_squeeze(&(kt->root), dst, dst_len);
+  turboshake128_absorb(big->root, tail, sizeof(tail));
 }
 
-// one-shot kangarootwelve with custom string
-void kangarootwelve_custom(const uint8_t *custom, const size_t custom_len, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len) {
+// squeeze into destination
+void k12_squeeze(k12_t *k12, uint8_t *dst, const size_t dst_len) {
+  turboshake128_squeeze(&(k12->ts), dst, dst_len);
+}
+
+void k12_init(k12_t *k12, const uint8_t *src, const size_t src_len, const uint8_t *custom, const size_t custom_len) {
   uint8_t cl_buf[9] = { 0 };
-  const size_t cl_buf_len = kangarootwelve_length_encode(cl_buf, custom_len);
+  const size_t cl_buf_len = k12_length_encode(cl_buf, custom_len);
 
   // get total size, in bytes
   const size_t total_len = src_len + custom_len + cl_buf_len;
-  if (total_len <= KT_BLOCK_LEN) {
+  if (total_len <= K12_BLOCK_LEN) {
     // total size is less than a single block, so create a single
     // turboshake128 instance, absorb the source data and the custom
-    // string, then squeeze into the destination buffer
+    // string.
 
-    // init
-    turboshake_t ts;
-    turboshake128_init_custom(&ts, KT_PAD_SINGLE);
+    // init turboshake context with single node padding
+    turboshake128_init_custom(&(k12->ts), K12_PAD_SINGLE);
 
     // absorb source, custom string, and custom string length
-    turboshake128_absorb(&ts, src, src_len);
-    turboshake128_absorb(&ts, custom, custom_len);
-    turboshake128_absorb(&ts, cl_buf, cl_buf_len);
-
-    // squeeze into destination
-    turboshake128_squeeze(&ts, dst, dst_len);
+    turboshake128_absorb(&(k12->ts), src, src_len);
+    turboshake128_absorb(&(k12->ts), custom, custom_len);
+    turboshake128_absorb(&(k12->ts), cl_buf, cl_buf_len);
   } else {
     // total size greater than a single block, so create an internal
-    // kangarootwelve context, absorb the source data and the custom
-    // string into the context, then squeeze into the destination buffer
+    // "big" kangarootwelve context, absorb the source data and the custom
+    // string into the context.
     //
     // (the internal kangarootwelve context takes care of multiplexing
     // the block data between the root and child contexts)
 
-    // init
-    kangarootwelve_t kt;
-    kangarootwelve_init(&kt);
+    // init turboshake context with root node padding
+    turboshake128_init_custom(&(k12->ts), K12_PAD_ROOT);
+
+    // init big context
+    k12_big_t big;
+    k12_big_init(&big, &(k12->ts));
 
     // absorb source, custom string, and custom string length
-    kangarootwelve_absorb(&kt, src, src_len);
-    kangarootwelve_absorb(&kt, custom, custom_len);
-    kangarootwelve_absorb(&kt, cl_buf, cl_buf_len);
-
-    // squeeze into destination
-    kangarootwelve_squeeze(&kt, dst, dst_len);
+    k12_big_absorb(&big, src, src_len);
+    k12_big_absorb(&big, custom, custom_len);
+    k12_big_absorb(&big, cl_buf, cl_buf_len);
+    k12_big_absorb_done(&big);
   }
 }
 
+// one-shot k12 with custom string
+void k12_custom_once(const uint8_t *src, const size_t src_len, const uint8_t *custom, const size_t custom_len, uint8_t *dst, const size_t dst_len) {
+  k12_t k12;
+  k12_init(&k12, src, src_len, custom, custom_len);
+  k12_squeeze(&k12, dst, dst_len);
+}
+
 // one-shot kangarootwelve w/o custom string
-void kangarootwelve(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len) {
-  kangarootwelve_custom(NULL, 0, src, src_len, dst, dst_len);
+void k12_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len) {
+  k12_custom_once(src, src_len, NULL, 0, dst, dst_len);
 }
 
 #ifdef SHA3_TEST
@@ -6481,7 +6489,7 @@ static void test_turboshake256(void) {
   }
 }
 
-static void test_kangarootwelve_length_encode(void) {
+static void test_k12_length_encode(void) {
   static const struct {
     const char *name;
     uint64_t val;
@@ -6541,13 +6549,13 @@ static void test_kangarootwelve_length_encode(void) {
 
   for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
     uint8_t got[9];
-    const size_t got_len = kangarootwelve_length_encode(got, tests[i].val);
+    const size_t got_len = k12_length_encode(got, tests[i].val);
 
     // check length and data
     if (got_len != tests[i].exp_len) {
-      fprintf(stderr, "test_kangarootwelve_length_encode(\"%s\") length check failed: got %zu, exp %zu:\n", tests[i].name, got_len, tests[i].exp_len);
+      fprintf(stderr, "test_k12_length_encode(\"%s\") length check failed: got %zu, exp %zu:\n", tests[i].name, got_len, tests[i].exp_len);
     } else if (memcmp(got, tests[i].exp, got_len)) {
-      fprintf(stderr, "test_kangarootwelve_length_encode(\"%s\") failed, got:\n", tests[i].name);
+      fprintf(stderr, "test_k12_length_encode(\"%s\") failed, got:\n", tests[i].name);
       dump_hex(stderr, got, got_len);
 
       fprintf(stderr, "exp:\n");
@@ -6556,7 +6564,7 @@ static void test_kangarootwelve_length_encode(void) {
   }
 }
 
-static void test_kangarootwelve(void) {
+static void test_k12(void) {
   // test pattern
   // src: https://www.ietf.org/archive/id/draft-irtf-cfrg-kangarootwelve-10.html#name-test-vectors
   static const uint8_t PATTERN[] = {
@@ -6719,11 +6727,11 @@ static void test_kangarootwelve(void) {
 
     // run
     uint8_t got[32] = { 0 };
-    kangarootwelve_custom(custom, tests[i].custom_len, src, tests[i].len, got, sizeof(got));
+    k12_custom_once(src, tests[i].len, custom, tests[i].custom_len, got, sizeof(got));
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "test_kangarootwelve(\"%s\") failed, got:\n", tests[i].name);
+      fprintf(stderr, "test_k12(\"%s\") failed, got:\n", tests[i].name);
       dump_hex(stderr, got, sizeof(got));
 
       fprintf(stderr, "exp:\n");
@@ -6787,8 +6795,8 @@ int main(void) {
   test_hmac_sha3_512_ctx();
   test_turboshake128();
   test_turboshake256();
-  test_kangarootwelve_length_encode();
-  test_kangarootwelve();
+  test_k12_length_encode();
+  test_k12();
   printf("ok\n");
 }
 

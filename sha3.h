@@ -1292,19 +1292,22 @@ _Bool turboshake256_absorb(turboshake_t *ts, const uint8_t *src, const size_t le
  */
 void turboshake256_squeeze(turboshake_t *ts, uint8_t *dst, const size_t len);
 
+// KangarooTwelve context
+typedef struct {
+  turboshake_t ts;
+} k12_t;
+
 /**
  * Initialize internal KangarooTwelve context, absorb `src_len` bytes of
  * input from source buffer `src`, then squeeze `dst_len` bytes of
  * output into destination buffer `dst`.
  *
- * @param[in] custom Custom string buffer.
- * @param[in] custom_len Custom string length, in bytes.
  * @param[in] src Source buffer.
  * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] dst_len Destination buffer length, in bytes.
  */
-void kangarootwelve(const uint8_t *custom, const size_t custom_len, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+void k12_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 /**
  * Initialize internal KangarooTwelve context with custom string
@@ -1312,14 +1315,44 @@ void kangarootwelve(const uint8_t *custom, const size_t custom_len, const uint8_
  * source buffer `src`, then squeeze `dst_len` bytes of output into
  * destination buffer `dst`.
  *
- * @param[in] custom Custom string buffer.
- * @param[in] custom_len Custom string length, in bytes.
  * @param[in] src Source buffer.
  * @param[in] src_len Source buffer length, in bytes.
+ * @param[in] custom Custom string buffer.
+ * @param[in] custom_len Custom string length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] dst_len Destination buffer length, in bytes.
  */
-void kangarootwelve_custom(const uint8_t *custom, const size_t custom_len, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+void k12_custom_once(const uint8_t *src, const size_t src_len, const uint8_t *custom, const size_t custom_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize KangarooTwelve context with message `src` of length
+ * `src_len` bytes and custom string `custom` of length `custom_len`
+ * bytes.
+ *
+ * Note: This implementation of KangarooTwelve is sequential, not
+ * parallel.
+ *
+ * @param[out] k12 KangarooTwelve context.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[in] custom Custom string buffer.
+ * @param[in] custom_len Custom string length, in bytes.
+ */
+void k12_init(k12_t *k12, const uint8_t *src, const size_t src_len, const uint8_t *custom, const size_t custom_len);
+
+/**
+ * Squeeze `dst_len` bytes of output into destination buffer `dst` from
+ * KangarooTwelve context `k12`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * Note: This implementation of KangarooTwelve is sequential, not
+ * parallel.
+ *
+ * @param[in/out] k12 KangarooTwelve context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ */
+void k12_squeeze(k12_t *k12, uint8_t *dst, const size_t dst_len);
 
 #ifdef __cplusplus
 }
