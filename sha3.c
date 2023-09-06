@@ -869,6 +869,74 @@ static inline size_t right_encode(uint8_t buf[static 9], const uint64_t n) {
   }
 }
 
+// kangarootwelve utility function
+// (similar to right_encode(), but slightly different)
+static inline size_t kangarootwelve_length_encode(uint8_t buf[static 9], const uint64_t n) {
+  if (n > 0x00ffffffffffffffULL) {
+    buf[0] = (n >> 56) & 0xff;
+    buf[1] = (n >> 40) & 0xff;
+    buf[2] = (n >> 32) & 0xff;
+    buf[3] = (n >> 24) & 0xff;
+    buf[4] = (n >> 16) & 0xff;
+    buf[5] = (n >> 8) & 0xff;
+    buf[6] = n & 0xff;
+    buf[7] = 8;
+    return 9;
+  } else if (n > 0x0000ffffffffffffULL) {
+    buf[0] = (n >> 56) & 0xff;
+    buf[1] = (n >> 40) & 0xff;
+    buf[2] = (n >> 32) & 0xff;
+    buf[3] = (n >> 24) & 0xff;
+    buf[4] = (n >> 16) & 0xff;
+    buf[5] = (n >> 8) & 0xff;
+    buf[6] = n & 0xff;
+    buf[7] = 7;
+    return 8;
+  } else if (n > 0x000000ffffffffffULL) {
+    buf[0] = (n >> 40) & 0xff;
+    buf[1] = (n >> 32) & 0xff;
+    buf[2] = (n >> 24) & 0xff;
+    buf[3] = (n >> 16) & 0xff;
+    buf[4] = (n >> 8) & 0xff;
+    buf[5] = n & 0xff;
+    buf[6] = 6;
+    return 7;
+  } else if (n > 0x00000000ffffffffULL) {
+    buf[0] = (n >> 32) & 0xff;
+    buf[1] = (n >> 24) & 0xff;
+    buf[2] = (n >> 16) & 0xff;
+    buf[3] = (n >> 8) & 0xff;
+    buf[4] = n & 0xff;
+    buf[5] = 5;
+    return 6;
+  } else if (n > 0x0000000000ffffffULL) {
+    buf[0] = (n >> 24) & 0xff;
+    buf[1] = (n >> 16) & 0xff;
+    buf[2] = (n >> 8) & 0xff;
+    buf[3] = n & 0xff;
+    buf[4] = 4;
+    return 5;
+  } else if (n > 0x000000000000ffffULL) {
+    buf[0] = (n >> 16) & 0xff;
+    buf[1] = (n >> 8) & 0xff;
+    buf[2] = n & 0xff;
+    buf[3] = 3;
+    return 4;
+  } else if (n > 0x00000000000000ffULL) {
+    buf[0] = (n >> 8) & 0xff;
+    buf[1] = n & 0xff;
+    buf[2] = 2;
+    return 3;
+  } else if (n > 0) {
+    buf[0] = n & 0xff;
+    buf[1] = 1;
+    return 2;
+  } else {
+    buf[0] = 0;
+    return 1;
+  }
+}
+
 // Write prefix for encode_string() to the given buffer.  Accepts the
 // length of the string, in bytes.
 //
@@ -1764,8 +1832,181 @@ void turboshake256_custom(const uint8_t pad, const uint8_t * const src, const si
   xof_once(SHAKE256_XOF_RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len);
 }
 
+// kangarootwelve block size, in bytes
+#define KT_BLOCK_LEN 8192
+
+// pad byte for single kangarootwelve chunk (<= 8192 bytes)
+#define KT_PAD_SINGLE 0x07
+
+// pad byte for root kangarootwelve turboshake instance (> 8192 bytes)
+#define KT_PAD_ROOT 0x06
+
+// pad byte for child kangarootwelve turboshake instances (> 8192 bytes)
+#define KT_PAD_CHILD 0x0B
+
+// private kangarootwelve context
+typedef struct {
+  turboshake_t root, // root turboshake context
+               curr; // current child turboshake context
+  size_t num_bytes,  // num bytes in current block
+         num_blocks; // total number of blocks
+} kangarootwelve_t;
+
+// init kangarootwelve context
+static void kangarootwelve_init(kangarootwelve_t * const kt) {
+  turboshake128_init_custom(&(kt->root), KT_PAD_ROOT);
+  kt->num_bytes = 0;
+  kt->num_blocks = 0;
+}
+
+// absorb data in child context
+static void kangarootwelve_child_absorb(kangarootwelve_t * const kt, const uint8_t *src, size_t src_len) {
+  while (src_len > 0) {
+    const size_t len = MIN(KT_BLOCK_LEN - kt->num_bytes, src_len);
+
+    // absorb into child context
+    turboshake128_absorb(&(kt->curr), src, len);
+
+    src += len;
+    src_len -= len;
+    kt->num_bytes += len;
+
+    if (kt->num_bytes == KT_BLOCK_LEN) {
+      // hash child
+      uint8_t buf[32] = { 0 };
+      turboshake128_squeeze(&(kt->curr), buf, sizeof(buf));
+
+      // absorb hash into root
+      turboshake128_absorb(&(kt->root), buf, sizeof(buf));
+
+      // reset child
+      turboshake128_init_custom(&(kt->curr), KT_PAD_CHILD);
+
+      // clear byte count, increment block count
+      kt->num_bytes = 0;
+      kt->num_blocks++;
+    }
+  }
+}
+
+// absorb data in root context
+// (passes excess data to child context)
+static void kangarootwelve_root_absorb(kangarootwelve_t * const kt, const uint8_t *src, size_t src_len) {
+  while (src_len > 0) {
+    const size_t len = MIN(KT_BLOCK_LEN - kt->num_bytes, src_len);
+
+    // absorb into root context
+    turboshake128_absorb(&(kt->root), src, len);
+
+    src += len;
+    src_len -= len;
+    kt->num_bytes += len;
+
+    if (kt->num_bytes == KT_BLOCK_LEN) {
+      // absorb trailer for first block
+      uint8_t buf[8] = { 3, 0, 0, 0, 0, 0, 0, 0 };
+      turboshake128_absorb(&(kt->root), buf, sizeof(buf));
+
+      // init child
+      turboshake128_init_custom(&(kt->curr), KT_PAD_CHILD);
+
+      // clear byte count, increment block count
+      kt->num_bytes = 0;
+      kt->num_blocks++;
+
+      // absorb rest of source in child
+      kangarootwelve_child_absorb(kt, src, src_len);
+      return;
+    }
+  }
+}
+
+// absorb data
+static void kangarootwelve_absorb(kangarootwelve_t * const kt, const uint8_t *src, size_t src_len) {
+  if (kt->num_blocks) {
+    // absorb successive blocks in child context
+    kangarootwelve_child_absorb(kt, src, src_len);
+  } else {
+    // absorb first block in root context
+    kangarootwelve_root_absorb(kt, src, src_len);
+  }
+}
+
+// finalize kangarootwelve context and squeeze data into destination
+static void kangarootwelve_squeeze(kangarootwelve_t * const kt, uint8_t *dst, const size_t dst_len) {
+  if (kt->num_bytes > 0) {
+    // hash child, absorb into root
+    uint8_t buf[32] = { 0 };
+    turboshake128_squeeze(&(kt->curr), buf, sizeof(buf));
+    turboshake128_absorb(&(kt->root), buf, sizeof(buf));
+  }
+
+  // absorb block count
+  uint8_t buf[9];
+  const size_t buf_len = kangarootwelve_length_encode(buf, kt->num_blocks);
+  turboshake128_absorb(&(kt->root), buf, buf_len);
+
+  // absorb tail
+  static const uint8_t tail[2] = { 0xff, 0xff };
+  turboshake128_absorb(&(kt->root), tail, sizeof(tail));
+
+  // squeeze
+  turboshake128_squeeze(&(kt->root), dst, dst_len);
+}
+
+// one-shot kangarootwelve with custom string
+void kangarootwelve_custom(const uint8_t *custom, const size_t custom_len, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len) {
+  uint8_t cl_buf[9] = { 0 };
+  const size_t cl_buf_len = kangarootwelve_length_encode(cl_buf, custom_len);
+
+  // get total size, in bytes
+  const size_t total_len = src_len + custom_len + cl_buf_len;
+  if (total_len <= KT_BLOCK_LEN) {
+    // total size is less than a single block, so create a single
+    // turboshake128 instance, absorb the source data and the custom
+    // string, then squeeze into the destination buffer
+
+    // init
+    turboshake_t ts;
+    turboshake128_init_custom(&ts, KT_PAD_SINGLE);
+
+    // absorb source, custom string, and custom string length
+    turboshake128_absorb(&ts, src, src_len);
+    turboshake128_absorb(&ts, custom, custom_len);
+    turboshake128_absorb(&ts, cl_buf, cl_buf_len);
+
+    // squeeze into destination
+    turboshake128_squeeze(&ts, dst, dst_len);
+  } else {
+    // total size greater than a single block, so create an internal
+    // kangarootwelve context, absorb the source data and the custom
+    // string into the context, then squeeze into the destination buffer
+    //
+    // (the internal kangarootwelve context takes care of multiplexing
+    // the block data between the root and child contexts)
+
+    // init
+    kangarootwelve_t kt;
+    kangarootwelve_init(&kt);
+
+    // absorb source, custom string, and custom string length
+    kangarootwelve_absorb(&kt, src, src_len);
+    kangarootwelve_absorb(&kt, custom, custom_len);
+    kangarootwelve_absorb(&kt, cl_buf, cl_buf_len);
+
+    // squeeze into destination
+    kangarootwelve_squeeze(&kt, dst, dst_len);
+  }
+}
+
+// one-shot kangarootwelve w/o custom string
+void kangarootwelve(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len) {
+  kangarootwelve_custom(NULL, 0, src, src_len, dst, dst_len);
+}
+
 #ifdef SHA3_TEST
 #include <stdio.h> // printf()
+#include <stdlib.h> // malloc() (used in test_kangarootwelve())
 
 static void dump_hex(FILE *f, const uint8_t * const a, const size_t len) {
   fprintf(f, "  ");
@@ -6215,7 +6456,7 @@ static void test_turboshake256(void) {
 
   for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
     // init
-    turboshake_t ts;
+    turboshake_t ts = { 0 };
     turboshake256_init_custom(&ts, tests[i].pad);
 
     // absorb
@@ -6236,6 +6477,263 @@ static void test_turboshake256(void) {
       fprintf(stderr, "exp:\n");
       dump_hex(stderr, tests[i].exp, sizeof(got));
     }
+  }
+}
+
+static void test_kangarootwelve_length_encode(void) {
+  static const struct {
+    const char *name;
+    uint64_t val;
+    uint8_t exp[9];
+    size_t exp_len;
+  } tests[] = {{
+    .name = "zero",
+    .val = 0,
+    .exp = { 0x00 },
+    .exp_len = 1,
+  }, {
+    .name = "1",
+    .val = 1,
+    .exp = { 0x01, 0x01 },
+    .exp_len = 2,
+  }, {
+    .name = "120",
+    .val = 120,
+    .exp = { 0x78, 0x01 },
+    .exp_len = 2,
+  }, {
+    .name = "256",
+    .val = 256,
+    .exp = { 0x01, 0x00, 0x02 },
+    .exp_len = 3,
+  }, {
+    .name = "65535",
+    .val = 65535,
+    .exp = { 0xff, 0xff, 0x02 },
+    .exp_len = 3,
+  }, {
+    .name = "65536",
+    .val = 65536,
+    .exp = { 0x01, 0x00, 0x00, 0x03 },
+    .exp_len = 4,
+  }, {
+    .name = "0xff00ff",
+    .val = 0xff00ff,
+    .exp = { 0xff, 0x00, 0xff, 0x03 },
+    .exp_len = 4,
+  }, {
+    .name = "0x01000000",
+    .val = 0x01000000,
+    .exp = { 0x01, 0x00, 0x00, 0x00, 0x04 },
+    .exp_len = 5,
+  }, {
+    .name = "0xffffffff",
+    .val = 0xffffffff,
+    .exp = { 0xff, 0xff, 0xff, 0xff, 0x04 },
+    .exp_len = 5,
+  }, {
+    .name = "0x0100000000",
+    .val = 0x0100000000,
+    .exp = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x05 },
+    .exp_len = 6,
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    uint8_t got[9];
+    const size_t got_len = kangarootwelve_length_encode(got, tests[i].val);
+
+    // check length and data
+    if (got_len != tests[i].exp_len) {
+      fprintf(stderr, "test_kangarootwelve_length_encode(\"%s\") length check failed: got %zu, exp %zu:\n", tests[i].name, got_len, tests[i].exp_len);
+    } else if (memcmp(got, tests[i].exp, got_len)) {
+      fprintf(stderr, "test_kangarootwelve_length_encode(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, got_len);
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, got_len);
+    }
+  }
+}
+
+static void test_kangarootwelve(void) {
+  // test pattern
+  // src: https://www.ietf.org/archive/id/draft-irtf-cfrg-kangarootwelve-10.html#name-test-vectors
+  static const uint8_t PATTERN[] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+    0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
+    0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
+    0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
+    0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F,
+    0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF,
+    0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+    0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF,
+    0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
+    0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
+    0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA,
+  };
+
+  static const struct {
+    const char *name; // test name
+    const bool is_data; // true: message is from data field, false: message is from pattern
+    uint8_t data[10]; // message data (if is_data == true)
+    const size_t len; // message length, in bytes
+    const size_t custom_len; // custom length, in bytes (data itself comes from PATTERN)
+    const uint8_t exp[32]; // expected hash
+  } tests[] = {{
+    .name = "len=0, c=0",
+    .len = 0,
+    .custom_len = 0,
+    .exp = {
+      0x1A, 0xC2, 0xD4, 0x50, 0xFC, 0x3B, 0x42, 0x05, 0xD1, 0x9D, 0xA7, 0xBF, 0xCA, 0x1B, 0x37, 0x51,
+      0x3C, 0x08, 0x03, 0x57, 0x7A, 0xC7, 0x16, 0x7F, 0x06, 0xFE, 0x2C, 0xE1, 0xF0, 0xEF, 0x39, 0xE5,
+    },
+  }, {
+    .name = "len=1, c=0",
+    .len = 1,
+    .custom_len = 0,
+    .exp = {
+      0x2B, 0xDA, 0x92, 0x45, 0x0E, 0x8B, 0x14, 0x7F, 0x8A, 0x7C, 0xB6, 0x29, 0xE7, 0x84, 0xA0, 0x58,
+      0xEF, 0xCA, 0x7C, 0xF7, 0xD8, 0x21, 0x8E, 0x02, 0xD3, 0x45, 0xDF, 0xAA, 0x65, 0x24, 0x4A, 0x1F,
+    },
+  }, {
+    .name = "len=17, c=0",
+    .len = 17,
+    .custom_len = 0,
+    .exp = {
+      0x6B, 0xF7, 0x5F, 0xA2, 0x23, 0x91, 0x98, 0xDB, 0x47, 0x72, 0xE3, 0x64, 0x78, 0xF8, 0xE1, 0x9B,
+      0x0F, 0x37, 0x12, 0x05, 0xF6, 0xA9, 0xA9, 0x3A, 0x27, 0x3F, 0x51, 0xDF, 0x37, 0x12, 0x28, 0x88,
+    },
+  }, {
+    .name = "len=17**2, c=0",
+    .len = 17*17,
+    .custom_len = 0,
+    .exp = {
+      0x0C, 0x31, 0x5E, 0xBC, 0xDE, 0xDB, 0xF6, 0x14, 0x26, 0xDE, 0x7D, 0xCF, 0x8F, 0xB7, 0x25, 0xD1,
+      0xE7, 0x46, 0x75, 0xD7, 0xF5, 0x32, 0x7A, 0x50, 0x67, 0xF3, 0x67, 0xB1, 0x08, 0xEC, 0xB6, 0x7C,
+    },
+  }, {
+    .name = "len=17**3, c=0",
+    .len = 17*17*17,
+    .custom_len = 0,
+    .exp = {
+      0xCB, 0x55, 0x2E, 0x2E, 0xC7, 0x7D, 0x99, 0x10, 0x70, 0x1D, 0x57, 0x8B, 0x45, 0x7D, 0xDF, 0x77,
+      0x2C, 0x12, 0xE3, 0x22, 0xE4, 0xEE, 0x7F, 0xE4, 0x17, 0xF9, 0x2C, 0x75, 0x8F, 0x0D, 0x59, 0xD0,
+    },
+  }, {
+    .name = "len=17**4, c=0",
+    .len = 17*17*17*17,
+    .custom_len = 0,
+    .exp = {
+      0x87, 0x01, 0x04, 0x5E, 0x22, 0x20, 0x53, 0x45, 0xFF, 0x4D, 0xDA, 0x05, 0x55, 0x5C, 0xBB, 0x5C,
+      0x3A, 0xF1, 0xA7, 0x71, 0xC2, 0xB8, 0x9B, 0xAE, 0xF3, 0x7D, 0xB4, 0x3D, 0x99, 0x98, 0xB9, 0xFE,
+    },
+  }, {
+    .name = "len=17**5, c=0",
+    .len = 17*17*17*17*17,
+    .custom_len = 0,
+    .exp = {
+      0x84, 0x4D, 0x61, 0x09, 0x33, 0xB1, 0xB9, 0x96, 0x3C, 0xBD, 0xEB, 0x5A, 0xE3, 0xB6, 0xB0, 0x5C,
+      0xC7, 0xCB, 0xD6, 0x7C, 0xEE, 0xDF, 0x88, 0x3E, 0xB6, 0x78, 0xA0, 0xA8, 0xE0, 0x37, 0x16, 0x82,
+    },
+  }, {
+    .name = "len=17**6, c=0",
+    .len = 17*17*17*17*17*17,
+    .custom_len = 0,
+    .exp = {
+      0x3C, 0x39, 0x07, 0x82, 0xA8, 0xA4, 0xE8, 0x9F, 0xA6, 0x36, 0x7F, 0x72, 0xFE, 0xAA, 0xF1, 0x32,
+      0x55, 0xC8, 0xD9, 0x58, 0x78, 0x48, 0x1D, 0x3C, 0xD8, 0xCE, 0x85, 0xF5, 0x8E, 0x88, 0x0A, 0xF8,
+    },
+  }, {
+    .name = "len=0, c=1",
+    .is_data = true,
+    .len = 0,
+    .custom_len = 1,
+    .exp = {
+      0xFA, 0xB6, 0x58, 0xDB, 0x63, 0xE9, 0x4A, 0x24, 0x61, 0x88, 0xBF, 0x7A, 0xF6, 0x9A, 0x13, 0x30,
+      0x45, 0xF4, 0x6E, 0xE9, 0x84, 0xC5, 0x6E, 0x3C, 0x33, 0x28, 0xCA, 0xAF, 0x1A, 0xA1, 0xA5, 0x83,
+    },
+  }, {
+    .name = "is_data=true, len=1, c=41",
+    .is_data = true,
+    .data = { 0xff },
+    .len = 1,
+    .custom_len = 41,
+    .exp = {
+      0xD8, 0x48, 0xC5, 0x06, 0x8C, 0xED, 0x73, 0x6F, 0x44, 0x62, 0x15, 0x9B, 0x98, 0x67, 0xFD, 0x4C,
+      0x20, 0xB8, 0x08, 0xAC, 0xC3, 0xD5, 0xBC, 0x48, 0xE0, 0xB0, 0x6B, 0xA0, 0xA3, 0x76, 0x2E, 0xC4,
+    },
+  }, {
+    .name = "is_data=true, len=3, c=41**2",
+    .is_data = true,
+    .data = { 0xff, 0xff, 0xff },
+    .len = 3,
+    .custom_len = 41*41,
+    .exp = {
+      0xC3, 0x89, 0xE5, 0x00, 0x9A, 0xE5, 0x71, 0x20, 0x85, 0x4C, 0x2E, 0x8C, 0x64, 0x67, 0x0A, 0xC0,
+      0x13, 0x58, 0xCF, 0x4C, 0x1B, 0xAF, 0x89, 0x44, 0x7A, 0x72, 0x42, 0x34, 0xDC, 0x7C, 0xED, 0x74,
+    },
+  }, {
+    .name = "is_data=true, len=7, c=41**3",
+    .is_data = true,
+    .data = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+    .len = 7,
+    .custom_len = 41*41*41,
+    .exp = {
+      0x75, 0xD2, 0xF8, 0x6A, 0x2E, 0x64, 0x45, 0x66, 0x72, 0x6B, 0x4F, 0xBC, 0xFC, 0x56, 0x57, 0xB9,
+      0xDB, 0xCF, 0x07, 0x0C, 0x7B, 0x0D, 0xCA, 0x06, 0x45, 0x0A, 0xB2, 0x91, 0xD7, 0x44, 0x3B, 0xCF,
+    },
+  }};
+
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    // populate source data
+    uint8_t *src = tests[i].is_data ? (uint8_t*) tests[i].data : NULL;
+    if (!tests[i].is_data && tests[i].len > 0) {
+      // alloc src
+      src = malloc(tests[i].len);
+
+      // copy src data from pattern
+      for (size_t ofs = 0; ofs < tests[i].len; ofs += sizeof(PATTERN)) {
+        const size_t len = MIN(tests[i].len - ofs, sizeof(PATTERN));
+        memcpy(src + ofs, PATTERN, len);
+      }
+    }
+
+    // populate custom string
+    uint8_t *custom = NULL;
+    if (tests[i].custom_len > 0) {
+      // alloc custom
+      custom = malloc(tests[i].custom_len);
+
+      // copy custom data from pattern
+      for (size_t ofs = 0; ofs < tests[i].custom_len; ofs += sizeof(PATTERN)) {
+        const size_t len = MIN(tests[i].custom_len - ofs, sizeof(PATTERN));
+        memcpy(custom + ofs, PATTERN, len);
+      }
+    }
+
+    // run
+    uint8_t got[32] = { 0 };
+    kangarootwelve_custom(custom, tests[i].custom_len, src, tests[i].len, got, sizeof(got));
+
+    // check
+    if (memcmp(got, tests[i].exp, sizeof(got))) {
+      fprintf(stderr, "test_kangarootwelve(\"%s\") failed, got:\n", tests[i].name);
+      dump_hex(stderr, got, sizeof(got));
+
+      fprintf(stderr, "exp:\n");
+      dump_hex(stderr, tests[i].exp, sizeof(got));
+    }
+
+    // free test data
+    if (!tests[i].is_data && tests[i].len) {
+      free(src);
+    }
+    free(custom);
   }
 }
 
@@ -6288,6 +6786,8 @@ int main(void) {
   test_hmac_sha3_512_ctx();
   test_turboshake128();
   test_turboshake256();
+  test_kangarootwelve_length_encode();
+  test_kangarootwelve();
   printf("ok\n");
 }
 
