@@ -58,6 +58,69 @@ static void do_shake256_xof(const uint8_t * const msg, const size_t msg_len, con
   fputs("\n", stdout);
 }
 
+// turboshake128 handler
+static void do_turboshake128(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
+  // init xof
+  turboshake_t ts;
+  turboshake256_init(&ts);
+
+  // absorb
+  if (!turboshake128_absorb(&ts, msg, msg_len)) {
+    fprintf(stderr, "Error: turborshake128_absorb() failed\n");
+    exit(-1);
+  }
+
+  uint8_t buf[64];
+  for (size_t i = 0; i < out_len; i += sizeof(buf)) {
+    // squeeze and print
+    const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
+    turboshake128_squeeze(&ts, buf, len);
+    print_hex(buf, len);
+  }
+
+  fputs("\n", stdout);
+}
+
+// turboshake256 handler
+static void do_turboshake256(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
+  // init xof
+  turboshake_t ts;
+  turboshake256_init(&ts);
+
+  // absorb
+  if (!turboshake256_absorb(&ts, msg, msg_len)) {
+    fprintf(stderr, "Error: turborshake256_absorb() failed\n");
+    exit(-1);
+  }
+
+  uint8_t buf[64];
+  for (size_t i = 0; i < out_len; i += sizeof(buf)) {
+    // squeeze and print
+    const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
+    turboshake256_squeeze(&ts, buf, len);
+    print_hex(buf, len);
+  }
+
+  fputs("\n", stdout);
+}
+
+// k12 handler
+static void do_k12(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
+  // init, absorb
+  k12_t k12;
+  k12_init(&k12, msg, msg_len, NULL, 0);
+
+  uint8_t buf[64];
+  for (size_t i = 0; i < out_len; i += sizeof(buf)) {
+    // squeeze and print
+    const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
+    k12_squeeze(&k12, buf, len);
+    print_hex(buf, len);
+  }
+
+  fputs("\n", stdout);
+}
+
 // available hash functions
 static const struct {
   const char *name;
@@ -85,10 +148,6 @@ static const struct {
   .size = 16,
   .hash_func = shake128,
 }, {
-  .name = "shake256",
-  .size = 32,
-  .hash_func = shake256,
-}, {
   .name = "shake128-xof",
   .size = 16, // default size
   .xof_func = do_shake128_xof,
@@ -96,6 +155,18 @@ static const struct {
   .name = "shake256-xof",
   .size = 32, // default size
   .xof_func = do_shake256_xof,
+}, {
+  .name = "turboshake128",
+  .size = 32,
+  .xof_func = do_turboshake128,
+}, {
+  .name = "turboshake256",
+  .size = 64,
+  .xof_func = do_turboshake256,
+}, {
+  .name = "k12",
+  .size = 32,
+  .xof_func = do_k12,
 }};
 
 // number of hash functions
@@ -126,6 +197,9 @@ static size_t get_fn_ofs(const char * const name) {
               "- shake256\n" \
               "- shake128-xof (XOF)\n" \
               "- shake256-xof (XOF)\n" \
+              "- turboshake128 (XOF)\n" \
+              "- turboshake256 (XOF)\n" \
+              "- k12 (XOF)\n" \
               "\n" \
               "Examples:\n" \
               "  # get SHA3-256 hash of string \"asdf\"\n" \
