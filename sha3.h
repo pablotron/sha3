@@ -1291,6 +1291,35 @@ _Bool turboshake256_absorb(turboshake_t *ts, const uint8_t *src, const size_t le
  */
 void turboshake256_squeeze(turboshake_t *ts, uint8_t *dst, const size_t len);
 
+/**
+ * Initialize internal KangarooTwelve context, absorb `src_len` bytes of
+ * input from source buffer `src`, then squeeze `dst_len` bytes of
+ * output into destination buffer `dst`.
+ *
+ * @param[in] custom Custom string buffer.
+ * @param[in] custom_len Custom string length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
+void kangarootwelve(const uint8_t *custom, const size_t custom_len, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * Initialize internal KangarooTwelve context with custom string
+ * `custom` of length `custom_len`, absorb `src_len` bytes of input from
+ * source buffer `src`, then squeeze `dst_len` bytes of output into
+ * destination buffer `dst`.
+ *
+ * @param[in] custom Custom string buffer.
+ * @param[in] custom_len Custom string length, in bytes.
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ */
+void kangarootwelve_custom(const uint8_t *custom, const size_t custom_len, const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
