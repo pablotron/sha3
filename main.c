@@ -3,14 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "hex.h" // hex_write()
 #include "sha3.h"
-
-// print hex-encoded buffer to stdout.
-static void print_hex(const uint8_t * const buf, const size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    printf("%02x", buf[i]);
-  }
-}
 
 // shake128-xof handler
 static void do_shake128_xof(const uint8_t *msg, const size_t msg_len, const size_t out_len) {
@@ -29,7 +23,7 @@ static void do_shake128_xof(const uint8_t *msg, const size_t msg_len, const size
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     shake128_xof_squeeze(&xof, buf, len);
-    print_hex(buf, len);
+    hex_write(stdout, buf, len);
   }
 
   fputs("\n", stdout);
@@ -52,7 +46,7 @@ static void do_shake256_xof(const uint8_t * const msg, const size_t msg_len, con
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     shake256_xof_squeeze(&xof, buf, len);
-    print_hex(buf, len);
+    hex_write(stdout, buf, len);
   }
 
   fputs("\n", stdout);
@@ -75,7 +69,7 @@ static void do_turboshake128(const uint8_t * const msg, const size_t msg_len, co
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     turboshake128_squeeze(&ts, buf, len);
-    print_hex(buf, len);
+    hex_write(stdout, buf, len);
   }
 
   fputs("\n", stdout);
@@ -98,7 +92,7 @@ static void do_turboshake256(const uint8_t * const msg, const size_t msg_len, co
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     turboshake256_squeeze(&ts, buf, len);
-    print_hex(buf, len);
+    hex_write(stdout, buf, len);
   }
 
   fputs("\n", stdout);
@@ -115,7 +109,7 @@ static void do_k12(const uint8_t * const msg, const size_t msg_len, const size_t
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
     k12_squeeze(&k12, buf, len);
-    print_hex(buf, len);
+    hex_write(stdout, buf, len);
   }
 
   fputs("\n", stdout);
@@ -237,7 +231,7 @@ int main(int argc, char *argv[]) {
     // hash into buffer, print buffer, print newline
     uint8_t buf[64];
     fns[ofs].hash_func(msg, len, buf);
-    print_hex(buf, fns[ofs].size);
+    hex_write(stdout, buf, fns[ofs].size);
     fputs("\n", stdout);
   }
 
