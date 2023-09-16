@@ -36,7 +36,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include <stdint.h>
+#include <stddef.h> // size_t
+#include <stdint.h> // uint8_t, uint64_t
 
 // Internal SHA-3 state.
 typedef union {
