@@ -1,20 +1,28 @@
+# compiler flags used for sample application and shared library
 CFLAGS=-W -Wall -Wextra -Werror -pedantic -std=c11 -O3 -march=native -mtune=native
+
+# sample application
+APP=./sha3
+APP_OBJS=sha3.o main.o
+
+# test app (test suite and sanitizers)
+TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -W -Wall -Wextra -Werror -pedantic -std=c11
 TEST_APP=./test-sha3
-EXAMPLE_APP=./sha3
-OBJS=sha3.o main.o
 
 .PHONY=test all
 
-all: $(EXAMPLE_APP)
+all: $(APP)
 
-$(EXAMPLE_APP): $(OBJS)
-	$(CC) -o $(EXAMPLE_APP) $(CFLAGS) $(OBJS)
+# build sample application
+$(APP): $(APP_OBJS)
+	$(CC) -o $(APP) $(CFLAGS) $(APP_OBJS)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $<
 
+# build and run test suite with sanitizers
 test:
-	$(CC) -o $(TEST_APP) $(CFLAGS) -DSHA3_TEST sha3.c && $(TEST_APP)
+	$(CC) -o $(TEST_APP) $(TEST_CFLAGS) -DSHA3_TEST sha3.c && $(TEST_APP)
 
 clean:
-	$(RM) -f $(TEST_APP) $(EXAMPLE_APP) $(OBJS)
+	$(RM) -f $(TEST_APP) $(APP) $(APP_OBJS)
