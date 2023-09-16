@@ -24,7 +24,7 @@
 * TurboSHAKE128 and TurboSHAKE256
 * KangarooTwelve
 
-Use `make` to build a minimal test application, and `make test` to run
+Use `make` to build a minimal sample application, and `make test` to run
 the test suite.
 
 ## Examples
