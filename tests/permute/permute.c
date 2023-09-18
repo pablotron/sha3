@@ -438,8 +438,6 @@ void permute_avx512(uint64_t a[static 25], const size_t num_rounds) {
 // beginning and end of the function.
 //
 // there are still several optimizations that can be done.  for example:
-// - iota does not need to reload the round constant every round
-//   (only every 8th round)
 // - some spills could be addressed
 // - probably more unnecessary register usage
 void permute_avx512_fast(uint64_t s[static 25], const size_t num_rounds) {
