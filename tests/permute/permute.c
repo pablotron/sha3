@@ -334,45 +334,6 @@ static void pi_avx512(uint64_t s[static 25]) {
   _mm512_mask_storeu_epi64((void*) (s + 20), m, t4);
 }
 
-#if 0
-static void pi_avx512(uint64_t s[static 25]) {
-  // unaligned gather mask and gather indices
-  uint8_t mask = 0x1f;
-  const __mmask8 m = _load_mask8(&mask);
-  static uint64_t vs0[8] = { 0, 6, 12, 18, 24, 0, 0, 0 },
-                  vs1[8] = { 3, 9, 10, 16, 22, 0, 0, 0 },
-                  vs2[8] = { 1, 7, 13, 19, 20, 0, 0, 0 },
-                  vs3[8] = { 4, 5, 11, 17, 23, 0, 0, 0 },
-                  vs4[8] = { 2, 8, 14, 15, 21, 0, 0, 0 };
-  // static uint64_t vs0[8] = { 0, 0, 0, 24, 18, 12, 6, 0 },
-  //                 vs1[8] = { 0, 0, 0, 22, 16, 10, 9, 3 },
-  //                 vs2[8] = { 0, 0, 0, 20, 19, 13, 7, 1 },
-  //                 vs3[8] = { 0, 0, 0, 23, 17, 11, 5, 4 },
-  //                 vs4[8] = { 0, 0, 0, 21, 15, 14, 8, 2 };
-
-  // load gather indices
-  const __m512i v0 = _mm512_loadu_epi64((void*) vs0),
-                v1 = _mm512_loadu_epi64((void*) vs1),
-                v2 = _mm512_loadu_epi64((void*) vs2),
-                v3 = _mm512_loadu_epi64((void*) vs3),
-                v4 = _mm512_loadu_epi64((void*) vs4);
-
-  // load rows
-  __m512i r0 = _mm512_i64gather_epi64(v0, (void*) (s), 1),
-          r1 = _mm512_i64gather_epi64(v1, (void*) (s), 1),
-          r2 = _mm512_i64gather_epi64(v2, (void*) (s), 1),
-          r3 = _mm512_i64gather_epi64(v3, (void*) (s), 1),
-          r4 = _mm512_i64gather_epi64(v4, (void*) (s), 1);
-
-  // store rows
-  _mm512_mask_storeu_epi64((void*) (s), m, r0),
-  _mm512_mask_storeu_epi64((void*) (s + 5), m, r1),
-  _mm512_mask_storeu_epi64((void*) (s + 10), m, r2),
-  _mm512_mask_storeu_epi64((void*) (s + 15), m, r3),
-  _mm512_mask_storeu_epi64((void*) (s + 20), m, r4);
-}
-#endif /* 0 */
-
 static void chi_avx512(uint64_t s[static 25]) {
   // mask bytes
   uint8_t mask = 0x1f;
@@ -534,12 +495,6 @@ void permute_avx512_fast(uint64_t s[static 25], const size_t num_rounds) {
       const __mmask8 m01 = _load_mask8(&m01b),
                      m23 = _load_mask8(&m23b),
                      m4 = _load_mask8(&m4b);
-      // permutation indices (offsets into state array)
-      // static uint64_t vs0[8] = { 0, 6, 12, 18, 24, 0, 0, 0 },
-      //                 vs1[8] = { 3, 9, 10, 16, 22, 0, 0, 0 },
-      //                 vs2[8] = { 1, 7, 13, 19, 20, 0, 0, 0 },
-      //                 vs3[8] = { 4, 5, 11, 17, 23, 0, 0, 0 },
-      //                 vs4[8] = { 2, 8, 14, 15, 21, 0, 0, 0 };
 
       // permutation indices
       //
@@ -623,12 +578,12 @@ void permute_avx512_fast(uint64_t s[static 25], const size_t num_rounds) {
     // chi
     {
       // permutation indices
-      static const uint64_t ids0[8] = { 1, 2, 3, 4, 0, 0, 0, 0 },
-                            ids1[8] = { 2, 3, 4, 0, 1, 0, 0, 0 };
+      static const uint64_t pis0[8] = { 1, 2, 3, 4, 0, 0, 0, 0 },
+                            pis1[8] = { 2, 3, 4, 0, 1, 0, 0, 0 };
 
       // load permutation indices
-      const __m512i p0 = _mm512_maskz_loadu_epi64(m, (void*) ids0),
-                    p1 = _mm512_maskz_loadu_epi64(m, (void*) ids1);
+      const __m512i p0 = _mm512_maskz_loadu_epi64(m, (void*) pis0),
+                    p1 = _mm512_maskz_loadu_epi64(m, (void*) pis1);
 
       // permute rows
       const __m512i t0_e0 = _mm512_maskz_permutexvar_epi64(m, p0, r0),
