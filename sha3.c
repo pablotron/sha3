@@ -2202,7 +2202,7 @@ static void k12_big_absorb_done(k12_big_t * const big) {
   }
 
   // absorb block count
-  uint8_t buf[9];
+  uint8_t buf[9] = { 0 };
   const size_t buf_len = k12_length_encode(buf, big->num_blocks);
   turboshake128_absorb(big->root, buf, buf_len);
 
