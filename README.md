@@ -1,12 +1,13 @@
 # sha3
 
-[C11][] implementation of the [SHA-3][] [cryptographic hash
-functions][hash], [eXtendable Output Functions (XOF)][xof], and
-[Hash-based Message Authentication Code functions (HMAC)][hmac] defined
-in [FIPS 202][], [SP 800-185][800-185], and the [draft KangarooTwelve
-and TurboSHAKE specification][turboshake-ietf].
+Embeddable, dependency-free [C11][] implementation of the [SHA-3][]
+[cryptographic hash functions][hash], [eXtendable Output Functions
+(XOF)][xof], and [Hash-based Message Authentication Code functions
+(HMAC)][hmac] defined in [FIPS 202][], [SP 800-185][800-185], and the
+[draft KangarooTwelve and TurboSHAKE specification][turboshake-ietf].
 
-Includes [AVX-512][] acceleration and a full test suite with test
+Includes [AVX-512][] acceleration, [Doxygen][]-friendly [API][]
+documentation, and a full test suite with sanitizers enabled and test
 vectors from the [NIST CSRC "Examples With Intermediate Values"
 site][csrc-examples] and the [Test Vectors section of the draft
 KangarooTwelve and TurboSHAKE specification][turboshake-ietf-test-vectors].
@@ -14,34 +15,36 @@ KangarooTwelve and TurboSHAKE specification][turboshake-ietf-test-vectors].
 The following algorithms are implemented:
 
 * SHA3-224, SHA3-256, SHA3-384, and SHA3-512: [SHA-3][] [cryptographic
-  hash functions][hash] with fixed-length output defined in section 6.1
-  of [FIPS 202][].
+  hash functions][hash] with fixed-length output, as defined in section
+  6.1 of [FIPS 202][].
 * HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, HMAC-SHA3-512:
   [HMAC][hmac] instantiated with [SHA-3][] hash functions, as specified
-  in [RFC 2104][] and [FIPS 198-1][].
+  in section 7 of [FIPS 202][], [RFC 2104][], and [FIPS 198-1][].
 * SHAKE128, SHAKE128-XOF, SHAKE256, and SHAKE256-XOF: [SHA-3][]
-  [XOFs][xof] defined in section 6.2 of [FIPS 202][].
+  [XOFs][xof] with both fixed-length output and arbitrary-length output,
+  as defined in section 6.2 of [FIPS 202][].
 * cSHAKE128, cSHAKE128-XOF, cSHAKE256, and cSHAKE256-XOF: Fixed-length
-  and [XOF][] variants of the customizable-SHAKE primitive defined in
-  section 3 of [SP 800-185][800-185].
+  and [XOF][] variants of the customizable-SHAKE primitive, as defined
+  in section 3 of [SP 800-185][800-185].
 * KMAC128, KMAC128-XOF, KMAC256 and KMAC256-XOF: Keccak [Message
-  Authentication Code (MAC)][mac] defined in section 4 of [SP
+  Authentication Code (MAC)][mac], as defined in section 4 of [SP
   800-185][800-185].
 * TupleHash128, TupleHash128-XOF, TupleHash256, and TupleHash256-XOF:
   Misuse-resistant hash function and [XOF][] for hashing a [tuple][] of
-  byte strings, defined in section 5 of [SP 800-185][800-185].
+  byte strings, as defined in section 5 of [SP 800-185][800-185].
 * ParallelHash128, ParallelHash128-XOF, ParallelHash256, and
-  ParallelHash256-XOF: Hash function and [XOF][] defined in section 6
-  of [SP 800-185][800-185].
-* TurboSHAKE128 and TurboSHAKE256: Faster, reduced-round [XOFs][xof]
-  defined in the [draft KangarooTwelve and TurboSHAKE
+  ParallelHash256-XOF: Hash function and [XOF][], as defined in section
+  6 of [SP 800-185][800-185].
+* TurboSHAKE128 and TurboSHAKE256: Faster, reduced-round [XOFs][xof],
+  as defined in the [draft KangarooTwelve and TurboSHAKE
   specification][turboshake-ietf].
-* KangarooTwelve: Faster, reduced-round [XOF][] with customzation string
-  defined in the [draft KangarooTwelve and TurboSHAKE
+* KangarooTwelve: Faster, reduced-round [XOF][] with a customzation
+  string, as defined in the [draft KangarooTwelve and TurboSHAKE
   specification][turboshake-ietf].
 
-Use `make` to build a minimal sample application, and `make test` to run
-the test suite.
+Use `make` to build a shared library and minimal sample application,
+`make doc` to generate [HTML][]-formatted [API][] documentation, and
+`make test` to run the test suite.
 
 ## Examples
 
@@ -165,6 +168,12 @@ int main() {
 
 See the `examples/` directory for more examples.
 
+## Documentation
+
+Full [API][] documentation is available in the comments of `sha3.h`.  If
+you have [Doxygen][] installed, you can generate [HTML][]-formatted
+[API][] documentation by typeing `make doc`.
+
 ## References
 
 * [FIPS 202 - SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions][FIPS 202]
@@ -208,3 +217,9 @@ See the `examples/` directory for more examples.
   "KangarooTwelve and TurboSHAKE test vectors"
 [avx-512]: https://en.wikipedia.org/wiki/AVX-512
   "Advanced Vector Extensions 512 (AVX-512): 512-bit SIMD vector instruction set"
+[doxygen]: https://en.wikipedia.org/wiki/Doxygen
+  "API documentation generator."
+[api]: https://en.wikipedia.org/wiki/API
+  "Application Programming Interface (API)"
+[html]: https://en.wikipedia.org/wiki/HTML
+  "HyperText Markup Language (HTML)"
