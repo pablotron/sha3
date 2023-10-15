@@ -172,7 +172,7 @@ See the `examples/` directory for more examples.
 
 Full [API][] documentation is available in the comments of `sha3.h`.  If
 you have [Doxygen][] installed, you can generate [HTML][]-formatted
-[API][] documentation by typeing `make doc`.
+[API][] documentation by typing `make doc`.
 
 ## References
 
