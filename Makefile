@@ -32,6 +32,10 @@ $(LIB): $(LIB_OBJS)
 test:
 	$(CC) -o $(TEST_APP) $(TEST_CFLAGS) -DSHA3_TEST sha3.c && $(TEST_APP)
 
+# build API documentation (requires doxygen)
+doc:
+	doxygen sha3.h
+
 # remove build files
 clean:
 	$(RM) -f $(TEST_APP) $(APP) $(APP_OBJS) $(LIB) $(LIB_OBJS)
