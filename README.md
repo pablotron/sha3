@@ -120,7 +120,7 @@ TurboSHAKE128 example, using the iterative API:
 #include "hex.h"
 #include "sha3.h"
 
-int main() {
+int main(void) {
   // init turboshake
   turboshake_t ts;
   turboshake128_init(&ts);
