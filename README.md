@@ -168,6 +168,16 @@ int main(void) {
 
 See the `examples/` directory for more examples.
 
+## Usage
+
+To use this library in your application:
+
+1. Copy `sha3.h` and `sha3.c` into your source tree.
+2. Update your build system to compile `sha3.o`.
+3. Include `sha3.h` in your application.
+
+See examples in the `examples/` directory.
+
 ## Documentation
 
 Full [API][] documentation is available in the comments of `sha3.h`.  If
