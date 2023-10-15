@@ -34,7 +34,7 @@ test:
 
 # build API documentation (requires doxygen)
 doc:
-	doxygen sha3.h
+	doxygen
 
 # remove build files
 clean:
