@@ -174,6 +174,15 @@ Full [API][] documentation is available in the comments of `sha3.h`.  If
 you have [Doxygen][] installed, you can generate [HTML][]-formatted
 [API][] documentation by typing `make doc`.
 
+## Tests
+
+Use `make test` to build and run the test suite.
+
+The test suite checks each component of this implementation for expected
+answers and is built with several sanitizers supported by both [GCC][]
+and [Clang][].  The source code for the test suite is embedded at the
+bottom of `fips203ipd.c` behind a `TEST_FIPS203IPD` define.
+
 ## References
 
 * [FIPS 202 - SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions][FIPS 202]
@@ -223,3 +232,7 @@ you have [Doxygen][] installed, you can generate [HTML][]-formatted
   "Application Programming Interface (API)"
 [html]: https://en.wikipedia.org/wiki/HTML
   "HyperText Markup Language (HTML)"
+[gcc]: https://en.wikipedia.org/wiki/GNU_Compiler_Collection
+  "GNU Compiler Collection."
+[clang]: https://en.wikipedia.org/wiki/Clang
+  "LLVM compiler front end."
