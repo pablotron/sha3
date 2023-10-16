@@ -1,10 +1,11 @@
 # sha3
 
-Embeddable, dependency-free [C11][] implementation of the [SHA-3][]
-[cryptographic hash functions][hash], [eXtendable Output Functions
-(XOF)][xof], and [Hash-based Message Authentication Code functions
-(HMAC)][hmac] defined in [FIPS 202][], [SP 800-185][800-185], and the
-[draft KangarooTwelve and TurboSHAKE specification][turboshake-ietf].
+Embeddable, dependency-free, [MIT-0][] licensed [C11][] implementation
+of the [SHA-3][] [cryptographic hash functions][hash], [eXtendable
+Output Functions (XOFs)][xof], and [Hash-based Message Authentication
+Code functions (HMAC)][hmac] defined in [FIPS 202][], [SP
+800-185][800-185], and the [draft KangarooTwelve and TurboSHAKE
+specification][turboshake-ietf].
 
 Includes [AVX-512][] acceleration, [Doxygen][]-friendly [API][]
 documentation, and a full test suite with sanitizers enabled and test
@@ -166,7 +167,7 @@ int main(void) {
 }
 ```
 
-See the `examples/` directory for more examples.
+See the `examples/` directory for more.
 
 ## Usage
 
@@ -175,8 +176,6 @@ To use this library in your application:
 1. Copy `sha3.h` and `sha3.c` into your source tree.
 2. Update your build system to compile `sha3.o`.
 3. Include `sha3.h` in your application.
-
-See examples in the `examples/` directory.
 
 ## Documentation
 
@@ -191,7 +190,7 @@ Use `make test` to build and run the test suite.
 The test suite checks each component of this implementation for expected
 answers and is built with several sanitizers supported by both [GCC][]
 and [Clang][].  The source code for the test suite is embedded at the
-bottom of `fips203ipd.c` behind a `TEST_FIPS203IPD` define.
+bottom of `sha3.c` behind a `TEST_SHA3` define.
 
 ## References
 
@@ -201,6 +200,27 @@ bottom of `fips203ipd.c` behind a `TEST_FIPS203IPD` define.
 * [NIST CSRC: Cryptographic Standards and Guidelines: Examples with Intermediate Values][csrc-examples]
 * [TurboSHAKE (PDF)][turboshake]
 * [KangarooTwelve and TurboSHAKE][turboshake-ietf]
+
+## License
+
+[MIT No Attribution (MIT-0)][MIT-0]:
+
+Copyright 2023 Paul Duncan
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 [C11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
   "ISO/IEC 9899:2011"
@@ -246,3 +266,5 @@ bottom of `fips203ipd.c` behind a `TEST_FIPS203IPD` define.
   "GNU Compiler Collection."
 [clang]: https://en.wikipedia.org/wiki/Clang
   "LLVM compiler front end."
+[mit-0]: https://opensource.org/license/mit-0/
+  "MIT No Attribution license"
