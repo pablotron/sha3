@@ -179,9 +179,9 @@ To use this library in your application:
 
 ## Documentation
 
-Full [API][] documentation is available in the comments of `sha3.h`.  If
-you have [Doxygen][] installed, you can generate [HTML][]-formatted
-[API][] documentation by typing `make doc`.
+Full [API][] documentation is available online [here][api-docs] and in
+the comments of `sha3.h`.  If you have [Doxygen][] installed, you can
+generate [HTML][]-formatted [API][] documentation by typing `make doc`.
 
 ## Tests
 
@@ -268,3 +268,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   "LLVM compiler front end."
 [mit-0]: https://opensource.org/license/mit-0/
   "MIT No Attribution license"
+[api-docs]: https://pmdn.org/api-docs/sha3/
+  "sha3 API documentation."
