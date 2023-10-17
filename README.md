@@ -203,7 +203,7 @@ bottom of `sha3.c` behind a `TEST_SHA3` define.
 
 ## License
 
-[MIT No Attribution (MIT-0)][MIT-0]:
+[MIT No Attribution (MIT-0)][MIT-0]
 
 Copyright 2023 Paul Duncan
 
