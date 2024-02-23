@@ -94,64 +94,61 @@ static inline void rho(uint64_t a[static 25]) {
 }
 
 // pi step of keccak permutation (scalar implementation)
-static inline void pi(uint64_t a[static 25]) {
-  uint64_t t[25] = { 0 };
-  memcpy(t, a, sizeof(t));
-  a[1] = t[6];
-  a[2] = t[12];
-  a[3] = t[18];
-  a[4] = t[24];
-  a[5] = t[3];
-  a[6] = t[9];
-  a[7] = t[10];
-  a[8] = t[16];
-  a[9] = t[22];
-  a[10] = t[1];
-  a[11] = t[7];
-  a[12] = t[13];
-  a[13] = t[19];
-  a[14] = t[20];
-  a[15] = t[4];
-  a[16] = t[5];
-  a[17] = t[11];
-  a[18] = t[17];
-  a[19] = t[23];
-  a[20] = t[2];
-  a[21] = t[8];
-  a[22] = t[14];
-  a[23] = t[15];
-  a[24] = t[21];
+static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
+  dst[0] = src[0];
+  dst[1] = src[6];
+  dst[2] = src[12];
+  dst[3] = src[18];
+  dst[4] = src[24];
+  dst[5] = src[3];
+  dst[6] = src[9];
+  dst[7] = src[10];
+  dst[8] = src[16];
+  dst[9] = src[22];
+  dst[10] = src[1];
+  dst[11] = src[7];
+  dst[12] = src[13];
+  dst[13] = src[19];
+  dst[14] = src[20];
+  dst[15] = src[4];
+  dst[16] = src[5];
+  dst[17] = src[11];
+  dst[18] = src[17];
+  dst[19] = src[23];
+  dst[20] = src[2];
+  dst[21] = src[8];
+  dst[22] = src[14];
+  dst[23] = src[15];
+  dst[24] = src[21];
 }
 
 // chi step of keccak permutation (scalar implementation)
-static inline void chi(uint64_t a[static 25]) {
-  uint64_t t[25] = { 0 };
-  memcpy(t, a, sizeof(t));
-  a[0] = t[0] ^ (~t[1] & t[2]);
-  a[1] = t[1] ^ (~t[2] & t[3]);
-  a[2] = t[2] ^ (~t[3] & t[4]);
-  a[3] = t[3] ^ (~t[4] & t[0]);
-  a[4] = t[4] ^ (~t[0] & t[1]);
-  a[5] = t[5] ^ (~t[6] & t[7]);
-  a[6] = t[6] ^ (~t[7] & t[8]);
-  a[7] = t[7] ^ (~t[8] & t[9]);
-  a[8] = t[8] ^ (~t[9] & t[5]);
-  a[9] = t[9] ^ (~t[5] & t[6]);
-  a[10] = t[10] ^ (~t[11] & t[12]);
-  a[11] = t[11] ^ (~t[12] & t[13]);
-  a[12] = t[12] ^ (~t[13] & t[14]);
-  a[13] = t[13] ^ (~t[14] & t[10]);
-  a[14] = t[14] ^ (~t[10] & t[11]);
-  a[15] = t[15] ^ (~t[16] & t[17]);
-  a[16] = t[16] ^ (~t[17] & t[18]);
-  a[17] = t[17] ^ (~t[18] & t[19]);
-  a[18] = t[18] ^ (~t[19] & t[15]);
-  a[19] = t[19] ^ (~t[15] & t[16]);
-  a[20] = t[20] ^ (~t[21] & t[22]);
-  a[21] = t[21] ^ (~t[22] & t[23]);
-  a[22] = t[22] ^ (~t[23] & t[24]);
-  a[23] = t[23] ^ (~t[24] & t[20]);
-  a[24] = t[24] ^ (~t[20] & t[21]);
+static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
+  dst[0] = src[0] ^ (~src[1] & src[2]);
+  dst[1] = src[1] ^ (~src[2] & src[3]);
+  dst[2] = src[2] ^ (~src[3] & src[4]);
+  dst[3] = src[3] ^ (~src[4] & src[0]);
+  dst[4] = src[4] ^ (~src[0] & src[1]);
+  dst[5] = src[5] ^ (~src[6] & src[7]);
+  dst[6] = src[6] ^ (~src[7] & src[8]);
+  dst[7] = src[7] ^ (~src[8] & src[9]);
+  dst[8] = src[8] ^ (~src[9] & src[5]);
+  dst[9] = src[9] ^ (~src[5] & src[6]);
+  dst[10] = src[10] ^ (~src[11] & src[12]);
+  dst[11] = src[11] ^ (~src[12] & src[13]);
+  dst[12] = src[12] ^ (~src[13] & src[14]);
+  dst[13] = src[13] ^ (~src[14] & src[10]);
+  dst[14] = src[14] ^ (~src[10] & src[11]);
+  dst[15] = src[15] ^ (~src[16] & src[17]);
+  dst[16] = src[16] ^ (~src[17] & src[18]);
+  dst[17] = src[17] ^ (~src[18] & src[19]);
+  dst[18] = src[18] ^ (~src[19] & src[15]);
+  dst[19] = src[19] ^ (~src[15] & src[16]);
+  dst[20] = src[20] ^ (~src[21] & src[22]);
+  dst[21] = src[21] ^ (~src[22] & src[23]);
+  dst[22] = src[22] ^ (~src[23] & src[24]);
+  dst[23] = src[23] ^ (~src[24] & src[20]);
+  dst[24] = src[24] ^ (~src[20] & src[21]);
 }
 
 // iota step of keccak permutation (scalar implementation)
@@ -178,11 +175,12 @@ static inline void iota(uint64_t a[static 25], const int i) {
 // only used by turboshake, so it might be worth creating a specialized
 // `permute12()` to handle turboshake.
 static inline void permute(uint64_t a[static 25], const size_t num_rounds) {
+  uint64_t tmp[25] = { 0 };
   for (int i = 0; i < (int) num_rounds; i++) {
     theta(a);
     rho(a);
-    pi(a);
-    chi(a);
+    pi(tmp, a);
+    chi(a, tmp);
     iota(a, 24 - num_rounds + i);
   }
 }
@@ -2352,7 +2350,7 @@ static void test_rho(void) {
 }
 
 static void test_pi(void) {
-  uint8_t a[] = {
+  const uint8_t src[] = {
     0x52, 0x58, 0x7B, 0x99, 0x01, 0x00, 0x00, 0x00, 0xA6, 0xB0, 0xF6, 0x32, 0x03, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x30, 0x85, 0xB5, 0x97, 0x19, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
@@ -2367,6 +2365,8 @@ static void test_pi(void) {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x80, 0x29, 0xAC, 0xBD, 0xCC, 0x00, 0x00,
   };
+
+  uint8_t got[25*8] = { 0 };
 
   const uint8_t exp[] = {
     0x52, 0x58, 0x7B, 0x99, 0x01, 0x00, 0x00, 0x00, 0x97, 0x19, 0x00, 0x00, 0x00, 0x30, 0x85, 0xB5,
@@ -2384,10 +2384,10 @@ static void test_pi(void) {
     0x4C, 0x61, 0xED, 0x65, 0x06, 0x00, 0x00, 0x00,
   };
 
-  pi((uint64_t*) a);
-  if (memcmp(exp, a, sizeof(exp))) {
+  pi((uint64_t*) got, (uint64_t*) src);
+  if (memcmp(exp, got, sizeof(exp))) {
     fprintf(stderr, "test_pi() failed, got:\n");
-    dump_state(stderr, (uint64_t*) a);
+    dump_state(stderr, (uint64_t*) got);
 
     fprintf(stderr, "exp:\n");
     dump_state(stderr, (uint64_t*) exp);
@@ -2395,7 +2395,7 @@ static void test_pi(void) {
 }
 
 static void test_chi(void) {
-  uint8_t a[] = {
+  const uint8_t src[] = {
     0x52, 0x58, 0x7B, 0x99, 0x01, 0x00, 0x00, 0x00, 0x97, 0x19, 0x00, 0x00, 0x00, 0x30, 0x85, 0xB5,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x80, 0x29, 0xAC, 0xBD, 0xCC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2410,6 +2410,8 @@ static void test_chi(void) {
     0x99, 0x01, 0x00, 0x00, 0x00, 0x53, 0x58, 0x7B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
     0x4C, 0x61, 0xED, 0x65, 0x06, 0x00, 0x00, 0x00,
   };
+
+  uint8_t got[25*8] = { 0 };
 
   const uint8_t exp[] = {
     0x52, 0x58, 0x7B, 0x99, 0x01, 0x04, 0x00, 0x00, 0x97, 0x19, 0x00, 0x00, 0x00, 0x30, 0x85, 0xB5,
@@ -2427,10 +2429,10 @@ static void test_chi(void) {
     0x4C, 0x61, 0xED, 0x65, 0x06, 0x00, 0x00, 0x00,
   };
 
-  chi((uint64_t*) a);
-  if (memcmp(exp, a, sizeof(exp))) {
+  chi((uint64_t*) got, (uint64_t*) src);
+  if (memcmp(exp, got, sizeof(exp))) {
     fprintf(stderr, "test_chi() failed, got:\n");
-    dump_state(stderr, (uint64_t*) a);
+    dump_state(stderr, (uint64_t*) got);
 
     fprintf(stderr, "exp:\n");
     dump_state(stderr, (uint64_t*) exp);
