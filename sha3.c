@@ -887,12 +887,8 @@ static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
-  // check state
-  if (xof->squeezing) {
-    return false;
-  }
-
+// absorb w/o checking state (used by xof_once())
+static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
   // absorb bytes
   // (TODO: absorb larger chunks)
   for (size_t i = 0; i < m_len; i++) {
@@ -902,11 +898,23 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
       xof->num_bytes = 0;
     }
   }
+}
+
+// check state, absorb bytes
+static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
+  // check state
+  if (xof->squeezing) {
+    return false;
+  }
+
+  // absorb
+  xof_absorb_raw(xof, rate, num_rounds, m, m_len);
 
   // return success
   return true;
 }
 
+// finalize absorb
 static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
@@ -921,13 +929,8 @@ static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, co
   xof->squeezing = true;
 }
 
-static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
-  // check state
-  if (!xof->squeezing) {
-    // finalize absorb
-    xof_absorb_done(xof, rate, num_rounds, pad);
-  }
-
+// squeeze data without checking state (used by xof_once())
+static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, uint8_t * const dst, const size_t dst_len) {
   for (size_t i = 0; i < dst_len; i++) {
     dst[i] = xof->a.u8[xof->num_bytes++];
     if (xof->num_bytes == rate) {
@@ -937,16 +940,27 @@ static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const 
   }
 }
 
+static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
+  // check state
+  if (!xof->squeezing) {
+    // finalize absorb
+    xof_absorb_done(xof, rate, num_rounds, pad);
+  }
+
+  xof_squeeze_raw(xof, rate, num_rounds, dst, dst_len);
+}
+
 static inline void xof_once(const size_t rate, const size_t num_rounds, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   // init
   sha3_xof_t xof;
   xof_init(&xof);
 
   // absorb (ignore error)
-  (void) xof_absorb(&xof, rate, num_rounds, src, src_len);
+  xof_absorb_raw(&xof, rate, num_rounds, src, src_len);
+  xof_absorb_done(&xof, rate, num_rounds, pad);
 
   // squeeze
-  xof_squeeze(&xof, rate, num_rounds, pad, dst, dst_len);
+  xof_squeeze_raw(&xof, rate, num_rounds, dst, dst_len);
 }
 
 #define SHAKE128_XOF_RATE (200 - 2 * 16)
