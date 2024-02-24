@@ -186,27 +186,10 @@ static void shake128_example(void) {
   uint8_t buf[1024] = { 0 };
   rand_bytes(buf, sizeof(buf));
 
-  // absorb into shake128, write 16 byte result to `out`
-  uint8_t hash[16] = { 0 };
-  shake128(buf, sizeof(buf), hash);
-  ///! [shake128]
-
-  // print to stdout
-  printf("%s: ", __func__);
-  hex_write(stdout, hash, sizeof(hash));
-  fputs("\n", stdout);
-}
-
-static void shake128_xof_once_example(void) {
-  ///! [shake128_xof_once]
-  // get 1024 random bytes
-  uint8_t buf[1024] = { 0 };
-  rand_bytes(buf, sizeof(buf));
-
-  // absorb into shake128 xof context with 15 byte output, write result to `out`
+  // absorb into shake128 context with 15 byte output, write result to `out`
   uint8_t out[15] = { 0 };
-  shake128_xof_once(buf, sizeof(buf), out, sizeof(out));
-  ///! [shake128_xof_once]
+  shake128(buf, sizeof(buf), out, sizeof(out));
+  ///! [shake128]
 
   // print to stdout
   printf("%s: ", __func__);
@@ -214,19 +197,19 @@ static void shake128_xof_once_example(void) {
   fputs("\n", stdout);
 }
 
-static void shake128_xof_example(void) {
-  ///! [shake128_xof]
+static void shake128_ctx_example(void) {
+  ///! [shake128_ctx]
   // get 1024 random bytes
   uint8_t buf[1024] = { 0 };
   rand_bytes(buf, sizeof(buf));
 
-  // create shake128 xof context with arbitrary length output
+  // create shake128 context
   sha3_xof_t ctx = { 0 };
-  shake128_xof_init(&ctx);
+  shake128_init(&ctx);
 
   // absorb `buf` contents in 32 byte chunks
   for (size_t i = 0; i < sizeof(buf); i += 32) {
-    shake128_xof_absorb(&ctx, buf + i, 32);
+    shake128_absorb(&ctx, buf + i, 32);
   }
 
   // print result prefix to stdout
@@ -236,7 +219,7 @@ static void shake128_xof_example(void) {
   for (size_t i = 0; i < 128; i += 32) {
     // squeeze 32 bytes of result into `out`
     uint8_t out[32] = { 0 };
-    shake128_xof_squeeze(&ctx, out, sizeof(out));
+    shake128_squeeze(&ctx, out, sizeof(out));
 
     // encode as hex, print to stdout
     hex_write(stdout, out, sizeof(out));
@@ -244,7 +227,7 @@ static void shake128_xof_example(void) {
 
   // print result suffix to stdout
   fputs("\n", stdout);
-  ///! [shake128_xof]
+  ///! [shake128_ctx]
 }
 
 static void shake256_example(void) {
@@ -253,27 +236,10 @@ static void shake256_example(void) {
   uint8_t buf[1024] = { 0 };
   rand_bytes(buf, sizeof(buf));
 
-  // absorb into shake256, write 32 byte result to `out`
-  uint8_t hash[32] = { 0 };
-  shake256(buf, sizeof(buf), hash);
-  ///! [shake256]
-
-  // print to stdout
-  printf("%s: ", __func__);
-  hex_write(stdout, hash, sizeof(hash));
-  fputs("\n", stdout);
-}
-
-static void shake256_xof_once_example(void) {
-  ///! [shake256_xof_once]
-  // get 1024 random bytes
-  uint8_t buf[1024] = { 0 };
-  rand_bytes(buf, sizeof(buf));
-
-  // absorb `buf` into shake256 xof with 15 byte output, write result to `out`
+  // absorb `buf` into shake256 context with 15 byte output, write result to `out`
   uint8_t out[15] = { 0 };
-  shake256_xof_once(buf, sizeof(buf), out, sizeof(out));
-  ///! [shake256_xof_once]
+  shake256(buf, sizeof(buf), out, sizeof(out));
+  ///! [shake256]
 
   // print to stdout
   printf("%s: ", __func__);
@@ -281,19 +247,19 @@ static void shake256_xof_once_example(void) {
   fputs("\n", stdout);
 }
 
-static void shake256_xof_example(void) {
-  ///! [shake256_xof]
+static void shake256_ctx_example(void) {
+  ///! [shake256_ctx]
   // get 1024 random bytes
   uint8_t buf[1024] = { 0 };
   rand_bytes(buf, sizeof(buf));
 
-  // create shake256 xof context with arbitrary length output
+  // create shake256 context
   sha3_xof_t ctx = { 0 };
-  shake256_xof_init(&ctx);
+  shake256_init(&ctx);
 
   // absorb `buf` contents in 32 byte chunks
   for (size_t i = 0; i < sizeof(buf); i += 32) {
-    shake256_xof_absorb(&ctx, buf + i, 32);
+    shake256_absorb(&ctx, buf + i, 32);
   }
 
   // print result prefix to stdout
@@ -303,7 +269,7 @@ static void shake256_xof_example(void) {
   for (size_t i = 0; i < 128; i += 32) {
     // squeeze 32 bytes of result into `out`
     uint8_t out[32] = { 0 };
-    shake256_xof_squeeze(&ctx, out, sizeof(out));
+    shake256_squeeze(&ctx, out, sizeof(out));
 
     // encode as hex, print to stdout
     hex_write(stdout, out, sizeof(out));
@@ -311,7 +277,7 @@ static void shake256_xof_example(void) {
 
   // print result suffix to stdout
   fputs("\n", stdout);
-  ///! [shake256_xof]
+  ///! [shake256_ctx]
 }
 
 static void hmac_sha3_224_example(void) {
@@ -557,7 +523,7 @@ static void cshake128_xof_example(void) {
     .custom_len = sizeof(custom) - 1, // length, in bytes (w/o trailing NUL)
   };
 
-  // create cSHAKE128 XOF context from parameters
+  // create cSHAKE128 context from parameters
   sha3_xof_t ctx = { 0 };
   cshake128_xof_init(&ctx, params);
 
@@ -623,7 +589,7 @@ static void cshake256_xof_example(void) {
     .custom_len = sizeof(custom) - 1, // length, in bytes (w/o trailing NUL)
   };
 
-  // create cSHAKE256 XOF context from parameters
+  // create cSHAKE256 context from parameters
   sha3_xof_t ctx = { 0 };
   cshake256_xof_init(&ctx, params);
 
@@ -1533,11 +1499,9 @@ int main(void) {
   sha3_512_example();
   sha3_512_absorb_example();
   shake128_example();
-  shake128_xof_once_example();
-  shake128_xof_example();
+  shake128_ctx_example();
   shake256_example();
-  shake256_xof_once_example();
-  shake256_xof_example();
+  shake256_ctx_example();
   hmac_sha3_224_example();
   hmac_sha3_224_absorb_example();
   hmac_sha3_256_example();

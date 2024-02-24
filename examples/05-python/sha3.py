@@ -17,10 +17,10 @@ sha3 = ctypes.CDLL('../../libsha3.so')
 # set function argument and return types
 # (note: this is not required, but it helps to prevent argument and type
 # oopsies)
-sha3.shake128_xof_once.argtypes = XOF_ARGS
-sha3.shake128_xof_once.rettype = None
-sha3.shake256_xof_once.argtypes = XOF_ARGS
-sha3.shake256_xof_once.rettype = None
+sha3.shake128.argtypes = XOF_ARGS
+sha3.shake128.rettype = None
+sha3.shake256.argtypes = XOF_ARGS
+sha3.shake256.rettype = None
 sha3.sha3_224.argtypes = HASH_ARGS
 sha3.sha3_224.rettype = None
 sha3.sha3_256.argtypes = HASH_ARGS
@@ -66,9 +66,9 @@ class Results:
     for r in self.rs:
       cw.writerow(r.to_row())
 
-def test_shake128_xof(rs: Results, data: bytes) -> None:
-  """append SHAKE128-XOF digest of data from hashlib and libsha3 to results"""
-  algo = 'shake128-xof' # algorithm name
+def test_shake128(rs: Results, data: bytes) -> None:
+  """append SHAKE128 digest of data from hashlib and libsha3 to results"""
+  algo = 'shake128' # algorithm name
   size = 32 # output size, in bytes
 
   # append hashlib digest
@@ -76,12 +76,12 @@ def test_shake128_xof(rs: Results, data: bytes) -> None:
 
   # append libsha3 digest
   buf = ctypes.create_string_buffer(size)
-  sha3.shake128_xof_once(data, len(data), buf, size)
+  sha3.shake128(data, len(data), buf, size)
   rs.append(algo, 'libsha3', buf.raw)
 
-def test_shake256_xof(rs: Results, data: bytes) -> None:
-  """append SHAKE256-XOF digest of data from hashlib and libsha3 to results"""
-  algo = 'shake256-xof' # algorithm name
+def test_shake256(rs: Results, data: bytes) -> None:
+  """append SHAKE256 digest of data from hashlib and libsha3 to results"""
+  algo = 'shake256' # algorithm name
   size = 32 # output size, in bytes
 
   # append hashlib digest
@@ -89,7 +89,7 @@ def test_shake256_xof(rs: Results, data: bytes) -> None:
 
   # append libsha3 digest
   buf = ctypes.create_string_buffer(size)
-  sha3.shake256_xof_once(data, len(data), buf, size)
+  sha3.shake256(data, len(data), buf, size)
   rs.append(algo, 'libsha3', buf.raw)
 
 def test_sha3_224(rs: Results, data: bytes) -> None:
@@ -145,8 +145,8 @@ DATA = b'foo bar'
 rs = Results()
 
 # run tests, add to results
-test_shake128_xof(rs, DATA)
-test_shake256_xof(rs, DATA)
+test_shake128(rs, DATA)
+test_shake256(rs, DATA)
 test_sha3_224(rs, DATA)
 test_sha3_256(rs, DATA)
 test_sha3_384(rs, DATA)
