@@ -48,9 +48,8 @@ extern "C" {
 /**
  * @defgroup shake SHAKE
  *
- * @brief [eXtendable Output Functions (XOF)][xof] with both
- * fixed-length and arbitrary length output, as defined in section 6.2
- * of [FIPS 202][].
+ * @brief [eXtendable Output Functions (XOF)][xof] with arbitrary length
+ * output, as defined in section 6.2 of [FIPS 202][].
  *
  * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
  *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
@@ -689,7 +688,7 @@ void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
  * @defgroup shake SHAKE
  *
  * @brief [SHA-3][] [Extendable-output functions (XOFs)][xof] with
- * arbitrary-length output, as defined in section 6.2 of [FIPS 202][].
+ * arbitrary length output, as defined in section 6.2 of [FIPS 202][].
  *
  * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
  *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
