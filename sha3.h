@@ -784,7 +784,7 @@ void shake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const size
  * @param[out] xof SHAKE256 [XOF][] context.
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_xof
+ * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
@@ -806,7 +806,7 @@ void shake256_init(sha3_xof_t *xof);
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_xof
+ * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
@@ -826,7 +826,7 @@ _Bool shake256_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
  * @param[in] len Destination buffer length, in bytes.
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_xof
+ * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
