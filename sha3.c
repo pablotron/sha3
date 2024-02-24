@@ -483,8 +483,8 @@ static inline size_t keccak(sha3_state_t * const a, const uint8_t *m, size_t m_l
   return m_len;
 }
 
-// one-shot sha3.
-static inline void sha3(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
+// one-shot sha3 hash.
+static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
   // in the sha3 hash functions, the capacity is always 2 times the
   // destination length, and the rate is the total state size minus the
   // capacity
@@ -508,31 +508,31 @@ static inline void sha3(const uint8_t *m, size_t m_len, uint8_t * const dst, con
 
 // one-shot sha3-224
 void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]) {
-  sha3(m, m_len, dst, 28);
+  hash_once(m, m_len, dst, 28);
 }
 
 // one-shot sha3-256
 void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]) {
-  sha3(m, m_len, dst, 32);
+  hash_once(m, m_len, dst, 32);
 }
 
 // one-shot sha3-384
 void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]) {
-  sha3(m, m_len, dst, 48);
+  hash_once(m, m_len, dst, 48);
 }
 
 // one-shot sha3-512
 void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]) {
-  sha3(m, m_len, dst, 64);
+  hash_once(m, m_len, dst, 64);
 }
 
 // Initialize iterative sha3 hash context.
-static inline void sha3_init(sha3_t * const hash) {
+static inline void hash_init(sha3_t * const hash) {
   memset(hash, 0, sizeof(sha3_t));
 }
 
 // Absorb input data into iterative SHA-3 hash context.
-static inline bool sha3_absorb(sha3_t * const hash, const size_t rate, const uint8_t *src, size_t len) {
+static inline bool hash_absorb(sha3_t * const hash, const size_t rate, const uint8_t *src, size_t len) {
   if (hash->finalized) {
     // hash already finalized, return false
     return false;
@@ -553,7 +553,7 @@ static inline bool sha3_absorb(sha3_t * const hash, const size_t rate, const uin
 }
 
 // Finalize iterative SHA-3 hash context.
-static inline void sha3_final(sha3_t * const hash, const size_t rate, uint8_t * dst, const size_t dst_len) {
+static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * dst, const size_t dst_len) {
   if (!hash->finalized) {
     // mark context as final
     hash->finalized = true;
@@ -576,17 +576,17 @@ static inline void sha3_final(sha3_t * const hash, const size_t rate, uint8_t * 
 
 // Initialize SHA3-224 iterative hash context.
 void sha3_224_init(sha3_t * const hash) {
-  sha3_init(hash);
+  hash_init(hash);
 }
 
 // Absorb data into SHA3-224 iterative hash context.
 _Bool sha3_224_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return sha3_absorb(hash, SHA3_224_RATE, src, len);
+  return hash_absorb(hash, SHA3_224_RATE, src, len);
 }
 
 // Finalize SHA3-224 iterative hash context.
 void sha3_224_final(sha3_t * const hash, uint8_t dst[SHA3_224_CAPACITY]) {
-  sha3_final(hash, SHA3_224_RATE, dst, SHA3_224_CAPACITY);
+  hash_final(hash, SHA3_224_RATE, dst, SHA3_224_CAPACITY);
 }
 
 #define SHA3_256_CAPACITY 32
@@ -594,17 +594,17 @@ void sha3_224_final(sha3_t * const hash, uint8_t dst[SHA3_224_CAPACITY]) {
 
 // Initialize SHA3-256 iterative hash context.
 void sha3_256_init(sha3_t * const hash) {
-  sha3_init(hash);
+  hash_init(hash);
 }
 
 // Absorb data into SHA3-256 iterative hash context.
 _Bool sha3_256_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return sha3_absorb(hash, SHA3_256_RATE, src, len);
+  return hash_absorb(hash, SHA3_256_RATE, src, len);
 }
 
 // Finalize SHA3-256 iterative hash context.
 void sha3_256_final(sha3_t * const hash, uint8_t dst[SHA3_256_CAPACITY]) {
-  sha3_final(hash, SHA3_256_RATE, dst, SHA3_256_CAPACITY);
+  hash_final(hash, SHA3_256_RATE, dst, SHA3_256_CAPACITY);
 }
 
 #define SHA3_384_CAPACITY 48
@@ -612,17 +612,17 @@ void sha3_256_final(sha3_t * const hash, uint8_t dst[SHA3_256_CAPACITY]) {
 
 // Initialize SHA3-384 iterative hash context.
 void sha3_384_init(sha3_t * const hash) {
-  sha3_init(hash);
+  hash_init(hash);
 }
 
 // Absorb data into SHA3-384 iterative hash context.
 _Bool sha3_384_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return sha3_absorb(hash, SHA3_384_RATE, src, len);
+  return hash_absorb(hash, SHA3_384_RATE, src, len);
 }
 
 // Finalize SHA3-384 iterative hash context.
 void sha3_384_final(sha3_t * const hash, uint8_t dst[SHA3_384_CAPACITY]) {
-  sha3_final(hash, SHA3_384_RATE, dst, SHA3_384_CAPACITY);
+  hash_final(hash, SHA3_384_RATE, dst, SHA3_384_CAPACITY);
 }
 
 #define SHA3_512_CAPACITY 64
@@ -630,17 +630,17 @@ void sha3_384_final(sha3_t * const hash, uint8_t dst[SHA3_384_CAPACITY]) {
 
 // Initialize SHA3-512 iterative hash context.
 void sha3_512_init(sha3_t * const hash) {
-  sha3_init(hash);
+  hash_init(hash);
 }
 
 // Absorb data into SHA3-512 iterative hash context.
 _Bool sha3_512_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return sha3_absorb(hash, SHA3_512_RATE, src, len);
+  return hash_absorb(hash, SHA3_512_RATE, src, len);
 }
 
 // Finalize SHA3-512 iterative hash context.
 void sha3_512_final(sha3_t * const hash, uint8_t dst[SHA3_512_CAPACITY]) {
-  sha3_final(hash, SHA3_512_RATE, dst, SHA3_512_CAPACITY);
+  hash_final(hash, SHA3_512_RATE, dst, SHA3_512_CAPACITY);
 }
 
 void hmac_sha3_224_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) {
