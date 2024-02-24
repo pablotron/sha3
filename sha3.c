@@ -194,6 +194,32 @@ static inline void permute(uint64_t a[static 25], const size_t num_rounds) {
 // copied from `permute_avx512_fast()` in `tests/permute/permute.c`. all
 // steps are inlined as blocks. ~3x faster than scalar implementation,
 // but could be sped up more.
+//
+// how it operates (roughly):
+//
+// 1. load rows from state `s` into avx512 registers r0-r4, like so:
+//
+//   r0 <- | s[ 0] | s[ 1] | s[ 2] | s[ 3] | s[ 4] | n/a | n/a | n/a |
+//   r1 <- | s[ 5] | s[ 6] | s[ 7] | s[ 8] | s[ 9] | n/a | n/a | n/a |
+//   r2 <- | s[10] | s[11] | s[12] | s[13] | s[14] | n/a | n/a | n/a |
+//   r3 <- | s[15] | s[16] | s[17] | s[18] | s[19] | n/a | n/a | n/a |
+//   r4 <- | s[20] | s[21] | s[22] | s[23] | s[24] | n/a | n/a | n/a |
+//
+// 2. load the first 8 round constants for iota into an avx512 `ra`
+// (round constants) register.
+//
+// 3. for each round:
+//   a. Perform theta, rho, pi, and chi steps.  pi, in particular, has
+//      a large number of permutation registers (so it may spill).
+//   b. Perform iota with the first round constant in `rc`, then permute
+//      `rc`.  If we have exhausted all 8 round constants and we are not
+//      at the final round, then load the next 8 round constants.
+//
+// 4. copy the rows from registers r0-r4 back to the state `s`.
+//
+// as noted above, this is not the most efficient avx512 implementation;
+// the row registers have three empty slots and there are a lot of loads
+// that could be removed with a little more work.
 static inline void permute(uint64_t s[static 25], const size_t num_rounds) {
   // unaligned load mask and permutation indices
   uint8_t mask = 0x1f,
@@ -853,6 +879,7 @@ void hmac_sha3_512(const uint8_t * const k, const size_t k_len, const uint8_t * 
   hmac_sha3_512_final(&hmac, dst);
 }
 
+// initialize xof context
 static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
@@ -975,6 +1002,7 @@ static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, con
 static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
   // check state
   if (xof->squeezing) {
+    // xof has already been squeezed, return error
     return false;
   }
 
@@ -1056,7 +1084,7 @@ static inline void xof_once(const size_t rate, const size_t num_rounds, const ui
   sha3_xof_t xof;
   xof_init(&xof);
 
-  // absorb (ignore error)
+  // absorb
   xof_absorb_raw(&xof, rate, num_rounds, src, src_len);
   xof_absorb_done(&xof, rate, num_rounds, pad);
 
