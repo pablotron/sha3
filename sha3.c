@@ -857,16 +857,109 @@ static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-// absorb w/o checking state (used by xof_once())
-static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
-  // absorb bytes
-  // (TODO: absorb larger chunks)
-  for (size_t i = 0; i < m_len; i++) {
-    xof->a.u8[xof->num_bytes++] ^= m[i];
-    if (xof->num_bytes == rate) {
-      permute(xof->a.u64, num_rounds);
-      xof->num_bytes = 0;
+// absorb by copying internal state and processing in chunks.  used by
+// xor_absorb_raw() for longer messages.
+static inline void xof_absorb_raw_bulk(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+  // load state and byte count from context
+  // TODO: benchmark this to see if it's faster
+  sha3_state_t a = xof->a;
+  size_t num_bytes = xof->num_bytes;
+
+  // absorb chunks
+  if ((num_bytes & 7) == 0) {
+    // absorb 32 byte chunks (4 x uint64)
+    while (num_bytes + 32 <= rate && m_len > 32) {
+      // copy chunk (to avoid `m` alignment issues)
+      uint64_t vals[4];
+      memcpy(vals, m, 4 * sizeof(uint64_t));
+
+      // xor chunk into state
+      // (FIXME: does not vectorize for some reason, even when unrolled)
+      for (size_t i = 0; i < 4; i++) {
+        a.u64[num_bytes/8 + i] ^= vals[i];
+      }
+
+      // update counters
+      num_bytes += 32;
+      m += 32;
+      m_len -= 32;
+
+      if (num_bytes == rate) {
+        // permute state
+        permute(a.u64, num_rounds);
+        num_bytes = 0;
+      }
     }
+
+    // absorb 8 byte chunks (1 x uint64)
+    while (num_bytes + 8 <= rate && m_len > 8) {
+      // copy chunk (to avoid `m` alignment issues)
+      uint64_t val;
+      memcpy(&val, m, sizeof(uint64_t));
+
+      // xor chunk into state
+      a.u64[num_bytes/8] ^= val;
+
+      // update counters
+      num_bytes += 8;
+      m += 8;
+      m_len -= 8;
+
+      if (num_bytes == rate) {
+        // permute state
+        permute(a.u64, num_rounds);
+        num_bytes = 0;
+      }
+    }
+  }
+
+  // absorb remaining bytes
+  for (size_t i = 0; i < m_len; i++) {
+    // xor byte into state
+    a.u8[num_bytes++] ^= m[i];
+
+    if (num_bytes == rate) {
+      // permute state
+      permute(a.u64, num_rounds);
+      num_bytes = 0;
+    }
+  }
+
+  // save state and byte count to context
+  xof->a = a;
+  xof->num_bytes = num_bytes;
+}
+
+// absorb without copying internal state.  used by xor_absorb_raw() for
+// short messages.
+static inline void xof_absorb_raw_simple(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+  // load byte count from context
+  size_t num_bytes = xof->num_bytes;
+
+  // absorb bytes
+  for (size_t i = 0; i < m_len; i++) {
+    // xor byte into state
+    xof->a.u8[num_bytes++] ^= m[i];
+
+    if (num_bytes == rate) {
+      // permute state
+      permute(xof->a.u64, num_rounds);
+      num_bytes = 0;
+    }
+  }
+
+  // save byte count to context
+  xof->num_bytes = num_bytes;
+}
+
+// absorb w/o checking state (used by xof_once())
+static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+  if ((xof->num_bytes & 7) == 0 && m_len > 32) {
+    // longer message, absorb in large chunks.
+    xof_absorb_raw_bulk(xof, rate, num_rounds, m, m_len);
+  } else {
+    // shorter message, absorb as bytes
+    xof_absorb_raw_simple(xof, rate, num_rounds, m, m_len);
   }
 }
 
