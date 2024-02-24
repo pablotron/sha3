@@ -6,15 +6,15 @@
 #include "hex.h" // hex_write()
 #include "sha3.h"
 
-// shake128-xof handler
-static void do_shake128_xof(const uint8_t *msg, const size_t msg_len, const size_t out_len) {
+// shake128 handler
+static void do_shake128(const uint8_t *msg, const size_t msg_len, const size_t out_len) {
   // init xof
   sha3_xof_t xof;
-  shake128_xof_init(&xof);
+  shake128_init(&xof);
 
   // absorb
-  if (!shake128_xof_absorb(&xof, msg, msg_len)) {
-    fprintf(stderr, "Error: shake128_xof_absorb() failed\n");
+  if (!shake128_absorb(&xof, msg, msg_len)) {
+    fprintf(stderr, "Error: shake128_absorb() failed\n");
     exit(-1);
   }
 
@@ -22,22 +22,22 @@ static void do_shake128_xof(const uint8_t *msg, const size_t msg_len, const size
   for (size_t i = 0; i < out_len; i += sizeof(buf)) {
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
-    shake128_xof_squeeze(&xof, buf, len);
+    shake128_squeeze(&xof, buf, len);
     hex_write(stdout, buf, len);
   }
 
   fputs("\n", stdout);
 }
 
-// shake256-xof handler
-static void do_shake256_xof(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
+// shake256 handler
+static void do_shake256(const uint8_t * const msg, const size_t msg_len, const size_t out_len) {
   // init xof
   sha3_xof_t xof;
-  shake256_xof_init(&xof);
+  shake256_init(&xof);
 
   // absorb
-  if (!shake256_xof_absorb(&xof, msg, msg_len)) {
-    fprintf(stderr, "Error: shake256_xof_absorb() failed\n");
+  if (!shake256_absorb(&xof, msg, msg_len)) {
+    fprintf(stderr, "Error: shake256_absorb() failed\n");
     exit(-1);
   }
 
@@ -45,7 +45,7 @@ static void do_shake256_xof(const uint8_t * const msg, const size_t msg_len, con
   for (size_t i = 0; i < out_len; i += sizeof(buf)) {
     // squeeze and print
     const size_t len = (out_len - i < sizeof(buf)) ? out_len - i : sizeof(buf);
-    shake256_xof_squeeze(&xof, buf, len);
+    shake256_squeeze(&xof, buf, len);
     hex_write(stdout, buf, len);
   }
 
@@ -139,16 +139,12 @@ static const struct {
   .hash_func = sha3_512,
 }, {
   .name = "shake128",
-  .size = 16,
-  .hash_func = shake128,
-}, {
-  .name = "shake128-xof",
   .size = 16, // default size
-  .xof_func = do_shake128_xof,
+  .xof_func = do_shake128,
 }, {
-  .name = "shake256-xof",
+  .name = "shake256",
   .size = 32, // default size
-  .xof_func = do_shake256_xof,
+  .xof_func = do_shake256,
 }, {
   .name = "turboshake128",
   .size = 32,
