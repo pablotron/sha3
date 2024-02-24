@@ -21,9 +21,7 @@ The following algorithms are implemented:
 * HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, HMAC-SHA3-512:
   [HMAC][hmac] instantiated with [SHA-3][] hash functions, as specified
   in section 7 of [FIPS 202][], [RFC 2104][], and [FIPS 198-1][].
-* SHAKE128, SHAKE128-XOF, SHAKE256, and SHAKE256-XOF: [SHA-3][]
-  [XOFs][xof] with both fixed-length output and arbitrary-length output,
-  as defined in section 6.2 of [FIPS 202][].
+* SHAKE128 and SHAKE256: [XOFs][xof] as defined in section 6.2 of [FIPS 202][].
 * cSHAKE128, cSHAKE128-XOF, cSHAKE256, and cSHAKE256-XOF: Fixed-length
   and [XOF][] variants of the customizable-SHAKE primitive, as defined
   in section 3 of [SP 800-185][800-185].
@@ -205,7 +203,7 @@ bottom of `sha3.c` behind a `TEST_SHA3` define.
 
 [MIT No Attribution (MIT-0)][MIT-0]
 
-Copyright 2023 Paul Duncan
+Copyright 2023, 2024 Paul Duncan
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
