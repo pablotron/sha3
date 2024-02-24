@@ -46,18 +46,6 @@ extern "C" {
  */
 
 /**
- * @defgroup shake SHAKE
- *
- * @brief [eXtendable Output Functions (XOF)][xof] with arbitrary length
- * output, as defined in section 6.2 of [FIPS 202][].
- *
- * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
- *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-
-/**
  * @brief Internal [SHA-3][] state (all members are private).
  * @ingroup sha3
  *
@@ -81,19 +69,6 @@ typedef struct {
   sha3_state_t a; /**< internal state */
   _Bool finalized; /**< mode (absorbing or finalized) */
 } sha3_t;
-
-/**
- * @brief Iterative [XOF][] context (all members are private).
- * @ingroup shake
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-typedef struct {
-  size_t num_bytes; /**< number of bytes absorbed */
-  sha3_state_t a; /**< internal state */
-  _Bool squeezing; /**< mode (absorbing or squeezing) */
-} sha3_xof_t;
 
 /*!
  * @brief Calculate SHA3-224 hash of input data.
@@ -697,6 +672,19 @@ void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
+
+/**
+ * @brief Iterative [XOF][] context (all members are private).
+ * @ingroup shake
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+typedef struct {
+  size_t num_bytes; /**< number of bytes absorbed */
+  sha3_state_t a; /**< internal state */
+  _Bool squeezing; /**< mode (absorbing or squeezing) */
+} sha3_xof_t;
 
 /**
  * @brief Initialize SHAKE128 [extendable-output function (XOF)][xof] context.
