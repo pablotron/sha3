@@ -739,7 +739,7 @@ _Bool shake128_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
  * @ingroup shake
  *
  * Squeeze `len` bytes of output into destination buffer `dst` from
- * SHAKE128 XOF context `xof`.  Can be called iteratively to squeeze
+ * SHAKE128 [XOF][] context `xof`.  Can be called iteratively to squeeze
  * output data in chunks.
  *
  * @param[in,out] xof SHAKE128 [XOF][] context.
@@ -1204,7 +1204,7 @@ void kmac256(const kmac_params_t params, const uint8_t *src, const size_t src_le
 void kmac128_xof_init(sha3_xof_t *xof, const kmac_params_t params);
 
 /**
- * @brief Absorb data into KMAC128 XOF context.
+ * @brief Absorb data into KMAC128 [XOF][] context.
  * @ingroup kmac
  *
  * Absorb data in buffer `src` of length `len` bytes into KMAC128
@@ -1770,7 +1770,7 @@ void parallelhash256(const parallelhash_params_t params, const uint8_t *src, con
  *
  * @note ParallelHash128 and ParallelHash128 [XOF][] produce different
  * output, because ParallelHash128 encodes the fixed output size as part
- * of the input while ParallelHash128 XOF does not.  See section 6.3.1
+ * of the input while ParallelHash128 [XOF][] does not.  See section 6.3.1
  * of [NIST SP 800-185][800-185] for details.
  *
  * @note This ParallelHash implementation is sequential, not parallel.
@@ -1827,7 +1827,7 @@ void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *src, const 
  *
  * @note This ParallelHash implementation is sequential, not parallel.
  *
- * @param[in,out] xof ParallelHash128 XOF context.
+ * @param[in,out] xof ParallelHash128 [XOF][] context.
  * @param[out] dst Destination buffer.
  * @param[in] len Destination buffer length, in bytes.
  *
