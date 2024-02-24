@@ -7,7 +7,7 @@
  * sha3
  * https://pablotron.org/sha3
  *
- * Copyright (c) 2023 Paul Duncan
+ * Copyright (c) 2023, 2024 Paul Duncan
  * SPDX-License-Identifier: MIT-0
  *
  * Embeddable, dependency-free, MIT-0-licensed C11 implementation of the
