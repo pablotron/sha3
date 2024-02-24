@@ -853,28 +853,6 @@ void hmac_sha3_512(const uint8_t * const k, const size_t k_len, const uint8_t * 
   hmac_sha3_512_final(&hmac, dst);
 }
 
-static inline void shake(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
-  // in the sha3 xof functions, the capacity is always 2 times the
-  // destination length, and the rate is the total state size minus the
-  // capacity
-  const size_t rate = 200 - 2 * dst_len;
-
-  sha3_state_t a = { .u64 = { 0 } };
-
-  const size_t len = keccak(&a, m, m_len, rate);
-
-  // append suffix (s6.2) and padding
-  // (note: suffix and padding are ambiguous in spec)
-  a.u8[len] ^= 0x1f;
-  a.u8[rate-1] ^= 0x80;
-
-  // permute
-  permute(a.u64, SHA3_NUM_ROUNDS);
-
-  // copy to destination
-  memcpy(dst, a.u8, dst_len);
-}
-
 static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
