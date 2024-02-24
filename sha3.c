@@ -857,9 +857,14 @@ static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-// absorb by copying internal state and processing in chunks.  used by
-// xor_absorb_raw() for longer messages.
-static inline void xof_absorb_raw_bulk(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+// absorb large message into context by doing the following:
+//
+// 1. copy context state to local state.
+// 2. absorb message in chunks into local state.
+// 3. copy local state back to context.
+//
+// Called by `xof_absorb_raw()` to absorb large messages.
+static inline void xof_absorb_raw_large(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
   // load state and byte count from context
   // TODO: benchmark this to see if it's faster
   sha3_state_t a = xof->a;
@@ -930,9 +935,9 @@ static inline void xof_absorb_raw_bulk(sha3_xof_t * const xof, const size_t rate
   xof->num_bytes = num_bytes;
 }
 
-// absorb without copying internal state.  used by xor_absorb_raw() for
+// absorb small message into context.  used by `xor_absorb_raw()` for
 // short messages.
-static inline void xof_absorb_raw_simple(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+static inline void xof_absorb_raw_small(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
   // load byte count from context
   size_t num_bytes = xof->num_bytes;
 
@@ -952,14 +957,17 @@ static inline void xof_absorb_raw_simple(sha3_xof_t * const xof, const size_t ra
   xof->num_bytes = num_bytes;
 }
 
-// absorb w/o checking state (used by xof_once())
+// absorb message into xof context without checking to see if the
+// context has already been squeezed.
+//
+// called by `xof_absorb()` and `xof_once()`.
 static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
   if ((xof->num_bytes & 7) == 0 && m_len > 32) {
-    // longer message, absorb in large chunks.
-    xof_absorb_raw_bulk(xof, rate, num_rounds, m, m_len);
+    // large message, absorb in chunks.
+    xof_absorb_raw_large(xof, rate, num_rounds, m, m_len);
   } else {
-    // shorter message, absorb as bytes
-    xof_absorb_raw_simple(xof, rate, num_rounds, m, m_len);
+    // short message, absorb as bytes.
+    xof_absorb_raw_small(xof, rate, num_rounds, m, m_len);
   }
 }
 
