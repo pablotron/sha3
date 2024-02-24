@@ -706,7 +706,7 @@ void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
  * @param[out] xof SHAKE128 [XOF][] context.
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_xof
+ * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
@@ -728,7 +728,7 @@ void shake128_init(sha3_xof_t * const xof);
  * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_xof
+ * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
@@ -748,7 +748,7 @@ _Bool shake128_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
  * @param[in] len Destination buffer length, in bytes.
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_xof
+ * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
@@ -960,7 +960,7 @@ void cshake256(const cshake_params_t params, const uint8_t *src, const size_t sr
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake128_init(sha3_xof_t *xof, const cshake_params_t params);
+void cshake128_xof_init(sha3_xof_t *xof, const cshake_params_t params);
 
 /**
  * @brief Absorb data into cSHAKE128 [XOF][] context.
@@ -988,7 +988,7 @@ void cshake128_init(sha3_xof_t *xof, const cshake_params_t params);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-_Bool cshake128_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+_Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
  * @brief Squeeze bytes from cSHAKE128 [XOF][] context.
@@ -1014,7 +1014,7 @@ _Bool cshake128_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake128_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void cshake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 /**
  * @brief Initialize cSHAKE256 [XOF][] context.
@@ -1041,7 +1041,7 @@ void cshake128_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake256_init(sha3_xof_t *xof, const cshake_params_t params);
+void cshake256_xof_init(sha3_xof_t *xof, const cshake_params_t params);
 
 /**
  * @brief Absorb data into cSHAKE256 [XOF][] context.
@@ -1069,7 +1069,7 @@ void cshake256_init(sha3_xof_t *xof, const cshake_params_t params);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-_Bool cshake256_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+_Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
  * @brief Squeeze bytes from cSHAKE256 [XOF][] context.
@@ -1095,7 +1095,7 @@ _Bool cshake256_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake256_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void cshake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 /**
  * @defgroup kmac KMAC
