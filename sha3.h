@@ -15,7 +15,7 @@
  *
  * - SHA3-224, SHA3-256, SHA3-384, and SHA3-512
  * - HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, and HMAC-SHA3-512
- * - SHAKE128, SHAKE128-XOF, SHAKE256, and SHAKE256-XOF
+ * - SHAKE128 and SHAKE256
  * - cSHAKE128, cSHAKE128-XOF, cSHAKE256, and cSHAKE256-XOF
  * - KMAC128, KMAC128-XOF, KMAC256, and KMAC256-XOF
  * - TupleHash128, TupleHash128-XOF, TupleHash256, and TupleHash256-XOF
@@ -689,8 +689,7 @@ void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
  * @defgroup shake SHAKE
  *
  * @brief [SHA-3][] [Extendable-output functions (XOFs)][xof] with
- * fixed-length and arbitrary-length output, as defined in section 6.2
- * of [FIPS 202][].
+ * arbitrary-length output, as defined in section 6.2 of [FIPS 202][].
  *
  * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
  *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
@@ -699,46 +698,6 @@ void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-
-/**
- * @brief Hash data with SHAKE128.
- * @ingroup shake
- *
- * Hash input message in buffer `msg` of length `len` bytes with
- * SHAKE128 ([FIPS 202][], section 6.2) and write 16 bytes of output to
- * destination buffer `dst`.
- *
- * @param[in] msg Input message.
- * @param[in] len Input message length, in bytes.
- * @param[out] dst Destination buffer.  Must be at least 16 bytes in length.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128
- *
- * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
- *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
- */
-void shake128(const uint8_t *msg, size_t len, uint8_t dst[static 16]);
-
-/**
- * @brief Hash data with SHAKE256.
- * @ingroup shake
- *
- * Hash input message in buffer `msg` of length `len` bytes with
- * SHAKE256 ([FIPS 202][], section 6.2) and write 32 bytes of output to
- * destination buffer `dst`.
- *
- * @param[in] msg Input message.
- * @param[in] len Input message length, in bytes.
- * @param[out] dst Destination buffer.  Must be at least 32 bytes in length.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256
- *
- * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
- *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
- */
-void shake256(const uint8_t *msg, size_t len, uint8_t dst[static 32]);
 
 /**
  * @brief Initialize SHAKE128 [extendable-output function (XOF)][xof] context.
@@ -752,7 +711,7 @@ void shake256(const uint8_t *msg, size_t len, uint8_t dst[static 32]);
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-void shake128_xof_init(sha3_xof_t * const xof);
+void shake128_init(sha3_xof_t * const xof);
 
 /**
  * @brief Absorb data into SHAKE128 [XOF][] context.
@@ -774,7 +733,7 @@ void shake128_xof_init(sha3_xof_t * const xof);
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-_Bool shake128_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+_Bool shake128_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
 
 /**
  * @brief Squeeze bytes from SHAKE128 [XOF][] context.
@@ -794,7 +753,7 @@ _Bool shake128_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len)
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-void shake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void shake128_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 /**
  * @brief Absorb data into SHAKE128 [XOF][], then squeeze bytes out.
@@ -804,22 +763,18 @@ void shake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  * [XOF][] context, then squeeze `dst_len` bytes of output into
  * destination buffer `dst`.
  *
- * @note This function will produce different output than shake128(),
- * because shake128() produces fixed-length output and this function
- * produces arbitrary-length output.
- *
  * @param[in] src Source buffer.
  * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] dst_len Destination buffer length, in bytes.
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_xof_once
+ * @snippet{trimleft} 06-all/all-fns.c shake128
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-void shake128_xof_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+void shake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 /**
  * @brief Initialize SHAKE256 [extendable-output function (XOF)][xof]
@@ -834,7 +789,7 @@ void shake128_xof_once(const uint8_t *src, const size_t src_len, uint8_t *dst, c
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-void shake256_xof_init(sha3_xof_t *xof);
+void shake256_init(sha3_xof_t *xof);
 
 /**
  * @brief Absorb data into SHAKE256 [XOF][] context.
@@ -856,7 +811,7 @@ void shake256_xof_init(sha3_xof_t *xof);
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-_Bool shake256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+_Bool shake256_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
 
 /**
  * @brief Squeeze bytes from SHAKE256 [XOF][] context.
@@ -876,7 +831,7 @@ _Bool shake256_xof_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len)
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-void shake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void shake256_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 /**
  * @brief Absorb data into SHAKE256 [XOF][], then squeeze bytes out.
@@ -886,22 +841,18 @@ void shake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  * [XOF][] context, then squeeze `dst_len` bytes of output into
  * destination buffer `dst`.
  *
- * @note This function will produce different output than shake256(),
- * because shake256() produces fixed-length output and this function
- * produces arbitrary-length output.
- *
  * @param[in] src Source buffer.
  * @param[in] src_len Source buffer length, in bytes.
  * @param[out] dst Destination buffer.
  * @param[in] dst_len Destination buffer length, in bytes.
  *
  * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_xof_once
+ * @snippet{trimleft} 06-all/all-fns.c shake256
  *
  * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
  *   "Extendable-Output Function (XOF)"
  */
-void shake256_xof_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+void shake256(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 /**
  * @defgroup cshake cSHAKE
@@ -1009,7 +960,7 @@ void cshake256(const cshake_params_t params, const uint8_t *src, const size_t sr
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake128_xof_init(sha3_xof_t *xof, const cshake_params_t params);
+void cshake128_init(sha3_xof_t *xof, const cshake_params_t params);
 
 /**
  * @brief Absorb data into cSHAKE128 [XOF][] context.
@@ -1037,7 +988,7 @@ void cshake128_xof_init(sha3_xof_t *xof, const cshake_params_t params);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-_Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+_Bool cshake128_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
  * @brief Squeeze bytes from cSHAKE128 [XOF][] context.
@@ -1063,7 +1014,7 @@ _Bool cshake128_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void cshake128_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 /**
  * @brief Initialize cSHAKE256 [XOF][] context.
@@ -1090,7 +1041,7 @@ void cshake128_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake256_xof_init(sha3_xof_t *xof, const cshake_params_t params);
+void cshake256_init(sha3_xof_t *xof, const cshake_params_t params);
 
 /**
  * @brief Absorb data into cSHAKE256 [XOF][] context.
@@ -1118,7 +1069,7 @@ void cshake256_xof_init(sha3_xof_t *xof, const cshake_params_t params);
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-_Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
+_Bool cshake256_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len);
 
 /**
  * @brief Squeeze bytes from cSHAKE256 [XOF][] context.
@@ -1144,7 +1095,7 @@ _Bool cshake256_xof_absorb(sha3_xof_t *xof, const uint8_t *src, const size_t len
  * [800-185]: https://csrc.nist.gov/pubs/sp/800/185/final
  *   "SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash"
  */
-void cshake256_xof_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+void cshake256_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
 
 /**
  * @defgroup kmac KMAC
