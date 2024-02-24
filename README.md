@@ -10,7 +10,7 @@ specification][turboshake-ietf].
 Includes [AVX-512][] acceleration, [Doxygen][]-friendly [API][]
 documentation, and a full test suite with sanitizers enabled and test
 vectors from the [NIST CSRC "Examples With Intermediate Values"
-site][csrc-examples], [NIST Cryptographic Algorithm Validation Program
+site][csrc-examples], the [NIST Cryptographic Algorithm Validation Program
 (CAVP)][cavp], and the [Test Vectors section of the draft KangarooTwelve
 and TurboSHAKE specification][turboshake-ietf-test-vectors].
 
