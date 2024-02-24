@@ -10,14 +10,14 @@ specification][turboshake-ietf].
 Includes [AVX-512][] acceleration, [Doxygen][]-friendly [API][]
 documentation, and a full test suite with sanitizers enabled and test
 vectors from the [NIST CSRC "Examples With Intermediate Values"
-site][csrc-examples] and the [Test Vectors section of the draft
-KangarooTwelve and TurboSHAKE specification][turboshake-ietf-test-vectors].
+site][csrc-examples], [NIST Cryptographic Algorithm Validation Program
+(CAVP)][cavp], and the [Test Vectors section of the draft KangarooTwelve
+and TurboSHAKE specification][turboshake-ietf-test-vectors].
 
 The following algorithms are implemented:
 
 * SHA3-224, SHA3-256, SHA3-384, and SHA3-512: [SHA-3][] [cryptographic
-  hash functions][hash] with fixed-length output, as defined in section
-  6.1 of [FIPS 202][].
+  hash functions][hash], as defined in section 6.1 of [FIPS 202][].
 * HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, HMAC-SHA3-512:
   [HMAC][hmac] instantiated with [SHA-3][] hash functions, as specified
   in section 7 of [FIPS 202][], [RFC 2104][], and [FIPS 198-1][].
