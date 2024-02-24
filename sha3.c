@@ -993,12 +993,42 @@ static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, co
 }
 
 // squeeze data without checking state (used by xof_once())
-static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, uint8_t * const dst, const size_t dst_len) {
-  for (size_t i = 0; i < dst_len; i++) {
-    dst[i] = xof->a.u8[xof->num_bytes++];
-    if (xof->num_bytes == rate) {
-      permute(xof->a.u64, num_rounds);
-      xof->num_bytes = 0;
+static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, uint8_t *dst, size_t dst_len) {
+  if (!xof->num_bytes) {
+    // num_bytes is zero, so we are reading from the start of the
+    // internal state buffer.  while `dst_len` is greater than rate,
+    // copy `rate` sized chunks directly from the internal state buffer
+    // to the destination, then permute the internal state.  squeeze
+    // rate-sized chunks to destination
+    while (dst_len >= rate) {
+      memcpy(dst, xof->a.u8, rate); // copy rate-sized chunk
+      permute(xof->a.u64, num_rounds); // permute state
+
+      // update destination pointer and length
+      dst += rate;
+      dst_len -= rate;
+    }
+
+    if (dst_len > 0) {
+      // the remaining destination length is less than `rate`, so copy a
+      // `dst_len`-sized chunk from the internal state to the
+      // destination buffer, then update the read byte count.
+
+      // squeeze dst_len-sized block to destination
+      memcpy(dst, xof->a.u8, dst_len); // copy dst_len-sized chunk
+      xof->num_bytes = dst_len; // update read byte count
+    }
+  } else {
+    // fall back to squeezing one byte at a time
+
+    // squeeze bytes to destination
+    for (size_t i = 0; i < dst_len; i++) {
+      dst[i] = xof->a.u8[xof->num_bytes++]; // squeeze byte to destination
+
+      if (xof->num_bytes == rate) {
+        permute(xof->a.u64, num_rounds); // permute state
+        xof->num_bytes = 0; // clear read bytes count
+      }
     }
   }
 }
