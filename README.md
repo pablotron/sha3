@@ -52,10 +52,10 @@ standard output:
 
 ```c
 // sha3-256-example: print sha3-256 hash of data to standard output.
-#include <stdint.h>
-#include <stdio.h>
-#include "hex.h"
-#include "sha3.h"
+#include <stdint.h> // uint8_t
+#include <stdio.h> // printf()
+#include "hex.h" // hex_write()
+#include "sha3.h" // sha3_256()
 
 // test data
 static const uint8_t DATA[] = "this is some test data";
@@ -82,10 +82,10 @@ bytes to standard output:
 // shake128-example: hash contents of DATA with SHAKE128 and print first
 // 200 bytes of SHAKE128 hash of data to standard output.
 //
-#include <stdint.h>
-#include <stdio.h>
-#include "hex.h"
-#include "sha3.h"
+#include <stdint.h> // uint8_t
+#include <stdio.h> // printf()
+#include "hex.h" // hex_write()
+#include "sha3.h" // shake128()
 
 // test data
 static const uint8_t DATA[] = "this is some test data";
@@ -93,7 +93,7 @@ static const uint8_t DATA[] = "this is some test data";
 int main(void) {
   // hash data
   uint8_t buf[200] = { 0 };
-  shake128_xof_once(DATA, sizeof(DATA), buf, sizeof(buf));
+  shake128(DATA, sizeof(DATA), buf, sizeof(buf));
 
   // print result to stdout
   printf("SHAKE128 (200 bytes): ");
@@ -113,11 +113,11 @@ TurboSHAKE128 example, using the iterative API:
 // result in 32 byte chunks (hex-encoded) to standard output.
 // output.
 //
-#include <stdint.h>
-#include <stdio.h>
-#include <err.h>
-#include "hex.h"
-#include "sha3.h"
+#include <stdint.h> // uint8_t
+#include <stdio.h> // fopen(), fread(), fclose(), printf()
+#include <err.h> // err(), warn()
+#include "hex.h" // hex_write()
+#include "sha3.h" // turboshake128_*()
 
 int main(void) {
   // init turboshake
@@ -190,12 +190,19 @@ answers and is built with several sanitizers supported by both [GCC][]
 and [Clang][].  The source code for the test suite is embedded at the
 bottom of `sha3.c` behind a `TEST_SHA3` define.
 
+An additional set of tests for the [FIPS 202][] hash and [XOFs][xof] is
+available in `tests/cavp-tests/`.  These test cases are generated from
+the [Cryptographic Algorithm Validation Program (CAVP)][cavp] byte test
+vectors, and are excluded from the main test suite because of their
+size.
+
 ## References
 
 * [FIPS 202 - SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions][FIPS 202]
 * [NIST SP 800-185 - SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash][800-185]
 * [FIPS 198-1 - The Keyed-Hash Message Authentication Code (HMAC)][FIPS 198-1]
 * [NIST CSRC: Cryptographic Standards and Guidelines: Examples with Intermediate Values][csrc-examples]
+* [NIST CSRC: Cryptographic Algorithm Validation Program (CAVP)][cavp]
 * [TurboSHAKE (PDF)][turboshake]
 * [KangarooTwelve and TurboSHAKE][turboshake-ietf]
 
@@ -268,3 +275,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   "MIT No Attribution license"
 [api-docs]: https://pmdn.org/api-docs/sha3/
   "sha3 API documentation."
+[cavp]: https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing
+  "Cryptographic Algorithm Validation Program (CAVP)"
