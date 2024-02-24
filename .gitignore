@@ -3,3 +3,5 @@ sha3
 *.o
 libsha3.so
 html
+tests/cavp-tests/cavp-tests
+tests/cavp-tests/zip-cache
