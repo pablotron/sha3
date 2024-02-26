@@ -455,6 +455,7 @@ static inline void permute(uint64_t s[static 25], const size_t num_rounds) {
 #endif /* __AVX512F__ */
 
 // one-shot keccak.
+// NOTE: only used by `hash_once()`.
 static inline size_t keccak(sha3_state_t * const a, const uint8_t *m, size_t m_len, const size_t rate) {
   while (m_len >= rate) {
     // absorb u64-sized chunks
@@ -571,8 +572,11 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
   memcpy(dst, hash->a.u8, dst_len);
 }
 
-#define SHA3_224_CAPACITY 28
-#define SHA3_224_RATE 200 - 2 * SHA3_224_CAPACITY
+// sha3-224 output length, in bytes
+#define SHA3_224_LEN 28
+
+// sha3-224 input rate, in bytes
+#define SHA3_224_RATE 200 - 2 * SHA3_224_LEN
 
 // Initialize SHA3-224 iterative hash context.
 void sha3_224_init(sha3_t * const hash) {
@@ -585,12 +589,15 @@ _Bool sha3_224_absorb(sha3_t * const hash, const uint8_t *src, const size_t len)
 }
 
 // Finalize SHA3-224 iterative hash context.
-void sha3_224_final(sha3_t * const hash, uint8_t dst[SHA3_224_CAPACITY]) {
-  hash_final(hash, SHA3_224_RATE, dst, SHA3_224_CAPACITY);
+void sha3_224_final(sha3_t * const hash, uint8_t dst[static SHA3_224_LEN]) {
+  hash_final(hash, SHA3_224_RATE, dst, SHA3_224_LEN);
 }
 
-#define SHA3_256_CAPACITY 32
-#define SHA3_256_RATE 200 - 2 * SHA3_256_CAPACITY
+// sha3-256 output length, in bytes
+#define SHA3_256_LEN 32
+
+// sha3-256 input rate, in bytes
+#define SHA3_256_RATE 200 - 2 * SHA3_256_LEN
 
 // Initialize SHA3-256 iterative hash context.
 void sha3_256_init(sha3_t * const hash) {
@@ -603,12 +610,15 @@ _Bool sha3_256_absorb(sha3_t * const hash, const uint8_t *src, const size_t len)
 }
 
 // Finalize SHA3-256 iterative hash context.
-void sha3_256_final(sha3_t * const hash, uint8_t dst[SHA3_256_CAPACITY]) {
-  hash_final(hash, SHA3_256_RATE, dst, SHA3_256_CAPACITY);
+void sha3_256_final(sha3_t * const hash, uint8_t dst[static SHA3_256_LEN]) {
+  hash_final(hash, SHA3_256_RATE, dst, SHA3_256_LEN);
 }
 
-#define SHA3_384_CAPACITY 48
-#define SHA3_384_RATE 200 - 2 * SHA3_384_CAPACITY
+// sha3-384 output length, in bytes
+#define SHA3_384_LEN 48
+
+// sha3-384 input rate, in bytes
+#define SHA3_384_RATE 200 - 2 * SHA3_384_LEN
 
 // Initialize SHA3-384 iterative hash context.
 void sha3_384_init(sha3_t * const hash) {
@@ -621,12 +631,15 @@ _Bool sha3_384_absorb(sha3_t * const hash, const uint8_t *src, const size_t len)
 }
 
 // Finalize SHA3-384 iterative hash context.
-void sha3_384_final(sha3_t * const hash, uint8_t dst[SHA3_384_CAPACITY]) {
-  hash_final(hash, SHA3_384_RATE, dst, SHA3_384_CAPACITY);
+void sha3_384_final(sha3_t * const hash, uint8_t dst[static SHA3_384_LEN]) {
+  hash_final(hash, SHA3_384_RATE, dst, SHA3_384_LEN);
 }
 
-#define SHA3_512_CAPACITY 64
-#define SHA3_512_RATE 200 - 2 * SHA3_512_CAPACITY
+// sha3-512 output length, in bytes
+#define SHA3_512_LEN 64
+
+// sha3-512 input rate, in bytes
+#define SHA3_512_RATE 200 - 2 * SHA3_512_LEN
 
 // Initialize SHA3-512 iterative hash context.
 void sha3_512_init(sha3_t * const hash) {
@@ -639,8 +652,8 @@ _Bool sha3_512_absorb(sha3_t * const hash, const uint8_t *src, const size_t len)
 }
 
 // Finalize SHA3-512 iterative hash context.
-void sha3_512_final(sha3_t * const hash, uint8_t dst[SHA3_512_CAPACITY]) {
-  hash_final(hash, SHA3_512_RATE, dst, SHA3_512_CAPACITY);
+void sha3_512_final(sha3_t * const hash, uint8_t dst[SHA3_512_LEN]) {
+  hash_final(hash, SHA3_512_RATE, dst, SHA3_512_LEN);
 }
 
 void hmac_sha3_224_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) {
@@ -678,9 +691,9 @@ _Bool hmac_sha3_224_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t l
   return sha3_224_absorb(&(hmac->inner), src, len);
 }
 
-void hmac_sha3_224_final(hmac_sha3_t *hmac, uint8_t dst[28]) {
+void hmac_sha3_224_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_224_LEN]) {
   // finalize inner hash into buffer
-  uint8_t buf[28] = { 0 };
+  uint8_t buf[SHA3_224_LEN] = { 0 };
   sha3_224_final(&(hmac->inner), buf);
 
   // absorb into outer hash
@@ -690,7 +703,7 @@ void hmac_sha3_224_final(hmac_sha3_t *hmac, uint8_t dst[28]) {
   sha3_224_final(&(hmac->outer), dst);
 }
 
-void hmac_sha3_224(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[28]) {
+void hmac_sha3_224(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_224_LEN]) {
   // init
   hmac_sha3_t hmac;
   hmac_sha3_224_init(&hmac, k, k_len);
@@ -737,9 +750,9 @@ _Bool hmac_sha3_256_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t l
   return sha3_256_absorb(&(hmac->inner), src, len);
 }
 
-void hmac_sha3_256_final(hmac_sha3_t *hmac, uint8_t dst[32]) {
+void hmac_sha3_256_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_256_LEN]) {
   // finalize inner hash into buffer
-  uint8_t buf[32] = { 0 };
+  uint8_t buf[SHA3_256_LEN] = { 0 };
   sha3_256_final(&(hmac->inner), buf);
 
   // absorb into outer hash
@@ -749,7 +762,7 @@ void hmac_sha3_256_final(hmac_sha3_t *hmac, uint8_t dst[32]) {
   sha3_256_final(&(hmac->outer), dst);
 }
 
-void hmac_sha3_256(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[32]) {
+void hmac_sha3_256(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_256_LEN]) {
   // init
   hmac_sha3_t hmac;
   hmac_sha3_256_init(&hmac, k, k_len);
@@ -796,9 +809,9 @@ _Bool hmac_sha3_384_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t l
   return sha3_384_absorb(&(hmac->inner), src, len);
 }
 
-void hmac_sha3_384_final(hmac_sha3_t *hmac, uint8_t dst[48]) {
+void hmac_sha3_384_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_384_LEN]) {
   // finalize inner hash into buffer
-  uint8_t buf[48] = { 0 };
+  uint8_t buf[SHA3_384_LEN] = { 0 };
   sha3_384_final(&(hmac->inner), buf);
 
   // absorb into outer hash
@@ -808,7 +821,7 @@ void hmac_sha3_384_final(hmac_sha3_t *hmac, uint8_t dst[48]) {
   sha3_384_final(&(hmac->outer), dst);
 }
 
-void hmac_sha3_384(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[48]) {
+void hmac_sha3_384(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_384_LEN]) {
   // init
   hmac_sha3_t hmac;
   hmac_sha3_384_init(&hmac, k, k_len);
@@ -855,9 +868,9 @@ _Bool hmac_sha3_512_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t l
   return sha3_512_absorb(&(hmac->inner), src, len);
 }
 
-void hmac_sha3_512_final(hmac_sha3_t *hmac, uint8_t dst[64]) {
+void hmac_sha3_512_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_512_LEN]) {
   // finalize inner hash into buffer
-  uint8_t buf[64] = { 0 };
+  uint8_t buf[SHA3_512_LEN] = { 0 };
   sha3_512_final(&(hmac->inner), buf);
 
   // absorb into outer hash
@@ -867,7 +880,7 @@ void hmac_sha3_512_final(hmac_sha3_t *hmac, uint8_t dst[64]) {
   sha3_512_final(&(hmac->outer), dst);
 }
 
-void hmac_sha3_512(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[64]) {
+void hmac_sha3_512(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_512_LEN]) {
   // init
   hmac_sha3_t hmac;
   hmac_sha3_512_init(&hmac, k, k_len);
@@ -1092,7 +1105,10 @@ static inline void xof_once(const size_t rate, const size_t num_rounds, const ui
   xof_squeeze_raw(&xof, rate, num_rounds, dst, dst_len);
 }
 
+// shake128 input rate, in bytes
 #define SHAKE128_RATE (200 - 2 * 16)
+
+// shake128 padding
 #define SHAKE128_PAD 0x1f
 
 void shake128_init(sha3_xof_t * const xof) {
@@ -1111,7 +1127,10 @@ void shake128(const uint8_t * const src, const size_t src_len, uint8_t * const d
   xof_once(SHAKE128_RATE, SHA3_NUM_ROUNDS, SHAKE128_PAD, src, src_len, dst, dst_len);
 }
 
+// shake256 input rate, in bytes
 #define SHAKE256_RATE (200 - 2 * 32)
+
+// shake256 padding
 #define SHAKE256_PAD 0x1f
 
 void shake256_init(sha3_xof_t * const xof) {
