@@ -342,7 +342,7 @@ void sha3_512_final(sha3_t *hash, uint8_t dst[64]);
  */
 
 /**
- * @brief Calculat HMAC-SHA3-224 of given key and data.
+ * @brief Calculate HMAC-SHA3-224 of given key and data.
  * @ingroup hmac
  *
  * Calculate HMAC-SHA3-224 ([FIPS 202][], Section 7) of key in buffer
