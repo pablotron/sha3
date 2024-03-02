@@ -1128,243 +1128,130 @@ static inline bytepad_t bytepad(const size_t data_len, const size_t width) {
 DEF_CSHAKE(128) // cshake128
 DEF_CSHAKE(256) // cshake256
 
-// one-shot kmac128
-void kmac128(
-  const kmac_params_t params,
-  const uint8_t * const msg, const size_t msg_len,
-  uint8_t * const dst, const size_t dst_len
-) {
-  static const uint8_t PAD[SHAKE128_RATE] = { 0 };
-  static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
-
-  // build cshake128 params
-  const cshake_params_t cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // build key prefix
-  uint8_t key_buf[9] = { 0 };
-  const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
-
-  // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE128_RATE);
-
-  // init xof
-  sha3_xof_t xof;
-  cshake128_xof_init(&xof, cshake_params);
-
-  // absorb bytepad prefix
-  (void) cshake128_xof_absorb(&xof, bp.prefix, bp.prefix_len);
-
-  // absorb key
-  (void) cshake128_xof_absorb(&xof, key_buf, key_buf_len);
-  if (params.key_len > 0) {
-    (void) cshake128_xof_absorb(&xof, params.key, params.key_len);
+// define kmac one-shot and xof functions
+#define DEF_KMAC(BITS) \
+  /* one-shot kmac (non-xof) */ \
+  void kmac ## BITS ( \
+    const kmac_params_t params, \
+    const uint8_t * const msg, const size_t msg_len, \
+    uint8_t * const dst, const size_t dst_len \
+  ) { \
+    static const uint8_t PAD[SHAKE ## BITS ## _RATE] = { 0 }; \
+    static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' }; \
+  \
+    /* build params */ \
+    const cshake_params_t cshake_params = { \
+      .name = NAME, \
+      .name_len = sizeof(NAME), \
+      .custom = params.custom, \
+      .custom_len = params.custom_len, \
+    }; \
+  \
+    /* build key prefix */ \
+    uint8_t key_buf[9] = { 0 }; \
+    const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len); \
+  \
+    /* build bytepad prefix */ \
+    const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE ## BITS ## _RATE); \
+  \
+    /* init xof */ \
+    sha3_xof_t xof; \
+    cshake ## BITS ## _xof_init(&xof, cshake_params); \
+  \
+    /* absorb bytepad prefix */ \
+    (void) cshake ## BITS ## _xof_absorb(&xof, bp.prefix, bp.prefix_len); \
+  \
+    /* absorb key */ \
+    (void) cshake ## BITS ## _xof_absorb(&xof, key_buf, key_buf_len); \
+    if (params.key_len > 0) { \
+      (void) cshake ## BITS ## _xof_absorb(&xof, params.key, params.key_len); \
+    } \
+  \
+    /* absorb padding */ \
+    for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) { \
+      const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD)); \
+      (void) cshake ## BITS ## _xof_absorb(&xof, PAD, len); \
+    } \
+  \
+    /* absorb message */ \
+    (void) cshake ## BITS ## _xof_absorb(&xof, msg, msg_len); \
+  \
+    /* build output length suffix */ \
+    uint8_t suffix_buf[9] = { 0 }; \
+    const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3); \
+  \
+    /* absorb output length suffix */ \
+    (void) cshake ## BITS ## _xof_absorb(&xof, suffix_buf, suffix_buf_len); \
+  \
+    /* squeeze */ \
+    cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
+  } \
+  \
+  /* absorb data into kmac-xof context */ \
+  _Bool kmac ## BITS ## _xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) { \
+    return cshake ## BITS ## _xof_absorb(xof, msg, len); \
+  } \
+  \
+  /* squeeze data from kmac-xof context */ \
+  void kmac ## BITS ## _xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) { \
+    if (!xof->squeezing) { \
+      /* append XOF length suffix */ \
+      const uint8_t SUFFIX[] = { 0, 1 }; \
+      (void) cshake ## BITS ## _xof_absorb(xof, SUFFIX, sizeof(SUFFIX)); \
+    } \
+    cshake ## BITS ## _xof_squeeze(xof, dst, len); \
+  } \
+  \
+  /* init kmac-xof context */ \
+  void kmac ## BITS ## _xof_init(sha3_xof_t * const xof, const kmac_params_t params) { \
+    static const uint8_t PAD[SHAKE ## BITS ## _RATE] = { 0 }; \
+    static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' }; \
+  \
+    /* build cshake params */ \
+    const cshake_params_t cshake_params = { \
+      .name = NAME, \
+      .name_len = sizeof(NAME), \
+      .custom = params.custom, \
+      .custom_len = params.custom_len, \
+    }; \
+  \
+    /* build key prefix */ \
+    uint8_t key_buf[9] = { 0 }; \
+    const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len); \
+  \
+    /* build bytepad prefix */ \
+    const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE ## BITS ## _RATE); \
+  \
+    /* init xof */ \
+    cshake ## BITS ## _xof_init(xof, cshake_params); \
+  \
+    /* absorb bytepad prefix */ \
+    (void) cshake ## BITS ## _xof_absorb(xof, bp.prefix, bp.prefix_len); \
+  \
+    /* absorb key */ \
+    (void) cshake ## BITS ## _xof_absorb(xof, key_buf, key_buf_len); \
+    if (params.key_len > 0) { \
+      (void) cshake ## BITS ## _xof_absorb(xof, params.key, params.key_len); \
+    } \
+  \
+    /* absorb padding */ \
+    for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) { \
+      const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD)); \
+      (void) cshake ## BITS ## _xof_absorb(xof, PAD, len); \
+    } \
+  } \
+  \
+  /* one-shot kmac-xof */ \
+  void kmac ## BITS ## _xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
+    sha3_xof_t xof; \
+    kmac ## BITS ## _xof_init(&xof, params); \
+    kmac ## BITS ## _xof_absorb(&xof, src, src_len); \
+    kmac ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
   }
 
-  // absorb padding
-  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
-    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
-    (void) cshake128_xof_absorb(&xof, PAD, len);
-  }
-
-  // absorb message
-  (void) cshake128_xof_absorb(&xof, msg, msg_len);
-
-  // build output length suffix
-  uint8_t suffix_buf[9] = { 0 };
-  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
-
-  // absorb output length suffix
-  (void) cshake128_xof_absorb(&xof, suffix_buf, suffix_buf_len);
-
-  // squeeze
-  cshake128_xof_squeeze(&xof, dst, dst_len);
-}
-
-// absorb data into kmac128-xof context
-_Bool kmac128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
-  return cshake128_xof_absorb(xof, msg, len);
-}
-
-// squeeze data from kmac128-xof context
-void kmac128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
-  if (!xof->squeezing) {
-    // append XOF length suffix
-    const uint8_t SUFFIX[] = { 0, 1 };
-    (void) cshake128_xof_absorb(xof, SUFFIX, sizeof(SUFFIX));
-  }
-  cshake128_xof_squeeze(xof, dst, len);
-}
-
-// init kmac128-xof context
-void kmac128_xof_init(sha3_xof_t * const xof, const kmac_params_t params) {
-  static const uint8_t PAD[SHAKE128_RATE] = { 0 };
-  static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
-
-  // build cshake128 params
-  const cshake_params_t cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // build key prefix
-  uint8_t key_buf[9] = { 0 };
-  const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
-
-  // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE128_RATE);
-
-  // init xof
-  cshake128_xof_init(xof, cshake_params);
-
-  // absorb bytepad prefix
-  (void) cshake128_xof_absorb(xof, bp.prefix, bp.prefix_len);
-
-  // absorb key
-  (void) cshake128_xof_absorb(xof, key_buf, key_buf_len);
-  if (params.key_len > 0) {
-    (void) cshake128_xof_absorb(xof, params.key, params.key_len);
-  }
-
-  // absorb padding
-  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
-    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
-    (void) cshake128_xof_absorb(xof, PAD, len);
-  }
-}
-
-// one-shot kmac128-xof
-void kmac128_xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  sha3_xof_t xof;
-  kmac128_xof_init(&xof, params);
-  kmac128_xof_absorb(&xof, src, src_len);
-  kmac128_xof_squeeze(&xof, dst, dst_len);
-}
-
-// one-shot kmac256
-void kmac256(
-  const kmac_params_t params,
-  const uint8_t * const msg, const size_t msg_len,
-  uint8_t * const dst, const size_t dst_len
-) {
-  static const uint8_t PAD[SHAKE256_RATE] = { 0 };
-  static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
-
-  // build cshake256 params
-  const cshake_params_t cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // build key prefix
-  uint8_t key_buf[9] = { 0 };
-  const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
-
-  // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE256_RATE);
-
-  // init xof
-  sha3_xof_t xof;
-  cshake256_xof_init(&xof, cshake_params);
-
-  // absorb bytepad prefix
-  (void) cshake256_xof_absorb(&xof, bp.prefix, bp.prefix_len);
-
-  // absorb key
-  (void) cshake256_xof_absorb(&xof, key_buf, key_buf_len);
-  if (params.key_len > 0) {
-    (void) cshake256_xof_absorb(&xof, params.key, params.key_len);
-  }
-
-  // absorb padding
-  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
-    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
-    (void) cshake256_xof_absorb(&xof, PAD, len);
-  }
-
-  // absorb message
-  (void) cshake256_xof_absorb(&xof, msg, msg_len);
-
-  // build output length suffix
-  uint8_t suffix_buf[9] = { 0 };
-  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
-
-  // absorb output length suffix
-  (void) cshake256_xof_absorb(&xof, suffix_buf, suffix_buf_len);
-
-  // squeeze
-  cshake256_xof_squeeze(&xof, dst, dst_len);
-}
-
-// absorb data into kmac256-xof context
-_Bool kmac256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
-  return cshake256_xof_absorb(xof, msg, len);
-}
-
-// squeeze data from kmac256-xof context
-void kmac256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
-  if (!xof->squeezing) {
-    // append XOF length suffix
-    const uint8_t SUFFIX[] = { 0, 1 };
-    (void) cshake256_xof_absorb(xof, SUFFIX, sizeof(SUFFIX));
-  }
-  cshake256_xof_squeeze(xof, dst, len);
-}
-
-// init kmac256-xof context
-void kmac256_xof_init(sha3_xof_t * const xof, const kmac_params_t params) {
-  static const uint8_t PAD[SHAKE256_RATE] = { 0 };
-  static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
-
-  // build cshake256 params
-  const cshake_params_t cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // build key prefix
-  uint8_t key_buf[9] = { 0 };
-  const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
-
-  // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE256_RATE);
-
-  // init xof
-  cshake256_xof_init(xof, cshake_params);
-
-  // absorb bytepad prefix
-  (void) cshake256_xof_absorb(xof, bp.prefix, bp.prefix_len);
-
-  // absorb key
-  (void) cshake256_xof_absorb(xof, key_buf, key_buf_len);
-  if (params.key_len > 0) {
-    (void) cshake256_xof_absorb(xof, params.key, params.key_len);
-  }
-
-  // absorb padding
-  for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) {
-    const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD));
-    (void) cshake256_xof_absorb(xof, PAD, len);
-  }
-}
-
-// one-shot kmac256-xof
-void kmac256_xof_once(const kmac_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  sha3_xof_t xof;
-  kmac256_xof_init(&xof, params);
-  kmac256_xof_absorb(&xof, src, src_len);
-  kmac256_xof_squeeze(&xof, dst, dst_len);
-}
+// define kmacs
+DEF_KMAC(128) // kmac128
+DEF_KMAC(256) // kmac256
 
 static inline void tuplehash128_init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) {
   static const uint8_t NAME[] = { 'T', 'u', 'p', 'l', 'e', 'H', 'a', 's', 'h' };
