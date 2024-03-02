@@ -184,7 +184,7 @@ static inline void permute(uint64_t a[static 25], const size_t num_rounds) {
     iota(a, 24 - num_rounds + i);
   }
 }
-#endif /* __AVX512F__ */
+#endif /* !__AVX512F__ */
 
 #ifdef __AVX512F__
 #include <immintrin.h>
