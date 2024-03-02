@@ -507,26 +507,6 @@ static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst
   memcpy(dst, a.u8, dst_len);
 }
 
-// one-shot sha3-224
-void sha3_224(const uint8_t *m, size_t m_len, uint8_t dst[static 28]) {
-  hash_once(m, m_len, dst, 28);
-}
-
-// one-shot sha3-256
-void sha3_256(const uint8_t *m, size_t m_len, uint8_t dst[static 32]) {
-  hash_once(m, m_len, dst, 32);
-}
-
-// one-shot sha3-384
-void sha3_384(const uint8_t *m, size_t m_len, uint8_t dst[static 48]) {
-  hash_once(m, m_len, dst, 48);
-}
-
-// one-shot sha3-512
-void sha3_512(const uint8_t *m, size_t m_len, uint8_t dst[static 64]) {
-  hash_once(m, m_len, dst, 64);
-}
-
 // Initialize iterative sha3 hash context.
 static inline void hash_init(sha3_t * const hash) {
   memset(hash, 0, sizeof(sha3_t));
@@ -572,325 +552,118 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
   memcpy(dst, hash->a.u8, dst_len);
 }
 
-// sha3-224 output length, in bytes
-#define SHA3_224_LEN 28
-
-// sha3-224 input rate, in bytes
-#define SHA3_224_RATE 200 - 2 * SHA3_224_LEN
-
-// Initialize SHA3-224 iterative hash context.
-void sha3_224_init(sha3_t * const hash) {
-  hash_init(hash);
-}
-
-// Absorb data into SHA3-224 iterative hash context.
-_Bool sha3_224_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return hash_absorb(hash, SHA3_224_RATE, src, len);
-}
-
-// Finalize SHA3-224 iterative hash context.
-void sha3_224_final(sha3_t * const hash, uint8_t dst[static SHA3_224_LEN]) {
-  hash_final(hash, SHA3_224_RATE, dst, SHA3_224_LEN);
-}
-
-// sha3-256 output length, in bytes
-#define SHA3_256_LEN 32
-
-// sha3-256 input rate, in bytes
-#define SHA3_256_RATE 200 - 2 * SHA3_256_LEN
-
-// Initialize SHA3-256 iterative hash context.
-void sha3_256_init(sha3_t * const hash) {
-  hash_init(hash);
-}
-
-// Absorb data into SHA3-256 iterative hash context.
-_Bool sha3_256_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return hash_absorb(hash, SHA3_256_RATE, src, len);
-}
-
-// Finalize SHA3-256 iterative hash context.
-void sha3_256_final(sha3_t * const hash, uint8_t dst[static SHA3_256_LEN]) {
-  hash_final(hash, SHA3_256_RATE, dst, SHA3_256_LEN);
-}
-
-// sha3-384 output length, in bytes
-#define SHA3_384_LEN 48
-
-// sha3-384 input rate, in bytes
-#define SHA3_384_RATE 200 - 2 * SHA3_384_LEN
-
-// Initialize SHA3-384 iterative hash context.
-void sha3_384_init(sha3_t * const hash) {
-  hash_init(hash);
-}
-
-// Absorb data into SHA3-384 iterative hash context.
-_Bool sha3_384_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return hash_absorb(hash, SHA3_384_RATE, src, len);
-}
-
-// Finalize SHA3-384 iterative hash context.
-void sha3_384_final(sha3_t * const hash, uint8_t dst[static SHA3_384_LEN]) {
-  hash_final(hash, SHA3_384_RATE, dst, SHA3_384_LEN);
-}
-
-// sha3-512 output length, in bytes
-#define SHA3_512_LEN 64
-
-// sha3-512 input rate, in bytes
-#define SHA3_512_RATE 200 - 2 * SHA3_512_LEN
-
-// Initialize SHA3-512 iterative hash context.
-void sha3_512_init(sha3_t * const hash) {
-  hash_init(hash);
-}
-
-// Absorb data into SHA3-512 iterative hash context.
-_Bool sha3_512_absorb(sha3_t * const hash, const uint8_t *src, const size_t len) {
-  return hash_absorb(hash, SHA3_512_RATE, src, len);
-}
-
-// Finalize SHA3-512 iterative hash context.
-void sha3_512_final(sha3_t * const hash, uint8_t dst[SHA3_512_LEN]) {
-  hash_final(hash, SHA3_512_RATE, dst, SHA3_512_LEN);
-}
-
-void hmac_sha3_224_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) {
-  // clear finalized flag
-  hmac->finalized = false;
-
-  // init key buffer
-  uint8_t k_buf[SHA3_224_RATE] = { 0 };
-  if (k_len <= sizeof(k_buf)) {
-    memcpy(k_buf, k, k_len);
-  } else {
-    sha3_224(k, k_len, k_buf);
+// define sha3 one shot and iterative context functions
+#define DEF_HASH(BITS) \
+  /* one-shot hash */ \
+  void sha3_ ## BITS(const uint8_t *m, size_t m_len, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
+    hash_once(m, m_len, dst, SHA3_ ## BITS ## _LEN); \
+  } \
+  \
+  /* Initialize iterative hash context. */ \
+  void sha3_ ## BITS ## _init(sha3_t * const hash) { \
+    hash_init(hash); \
+  } \
+  \
+  /* Absorb data into SHA3 iterative hash context. */ \
+  _Bool sha3_ ## BITS ## _absorb(sha3_t * const hash, const uint8_t *src, const size_t len) { \
+    return hash_absorb(hash, SHA3_ ## BITS ## _RATE, src, len); \
+  } \
+  \
+  /* Finalize SHA3 iterative hash context. */ \
+  void sha3_ ## BITS ## _final(sha3_t * const hash, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
+    hash_final(hash, SHA3_ ## BITS ## _RATE, dst, SHA3_ ## BITS ## _LEN); \
   }
 
-  // apply opad
-  for (size_t i = 0; i < SHA3_224_RATE; i++) {
-    k_buf[i] ^= 0x5c;
+// sha3-224
+#define SHA3_224_LEN 28 // sha3-224 output length, in bytes
+#define SHA3_224_RATE 200 - 2 * SHA3_224_LEN // sha3-224 input rate
+DEF_HASH(224) // sha3_224_{init,absorb,final}()
+
+// sha3-256
+#define SHA3_256_LEN 32 // sha3-256 output length, in bytes
+#define SHA3_256_RATE 200 - 2 * SHA3_256_LEN // sha3-256 input rate, in bytes
+DEF_HASH(256) // sha3_256_{init,absorb,final}()
+
+// sha3-384
+#define SHA3_384_LEN 48 // sha3-384 output length, in bytes
+#define SHA3_384_RATE 200 - 2 * SHA3_384_LEN // sha3-384 input rate, in bytes
+DEF_HASH(384) // sha3_384_{init,absorb,final}()
+
+// sha3-512
+#define SHA3_512_LEN 64 // sha3-512 output length, in bytes
+#define SHA3_512_RATE 200 - 2 * SHA3_512_LEN // sha3-512 input rate, in bytes
+DEF_HASH(512) // sha3_512_{init,absorb,final}()
+
+// define hmac-sha3 iterative context and one-shot functions
+#define DEF_HMAC(BITS) \
+	/* init hmac-sha3 context */ \
+  void hmac_sha3_ ## BITS ## _init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) { \
+    /* clear finalized flag */ \
+    hmac->finalized = false; \
+  \
+    /* init key buffer */ \
+    uint8_t k_buf[SHA3_ ## BITS ## _RATE] = { 0 }; \
+    if (k_len <= sizeof(k_buf)) { \
+      memcpy(k_buf, k, k_len); \
+    } else { \
+      sha3_ ## BITS(k, k_len, k_buf); \
+    } \
+  \
+    /* apply opad */ \
+    for (size_t i = 0; i < SHA3_ ## BITS ## _RATE; i++) { \
+      k_buf[i] ^= 0x5c; \
+    } \
+  \
+    /* init outer hash, absorb outer key */ \
+    sha3_ ## BITS ## _init(&(hmac->outer)); \
+    sha3_ ## BITS ## _absorb(&(hmac->outer), k_buf, sizeof(k_buf)); \
+  \
+    /* remove opad, apply ipad */ \
+    for (size_t i = 0; i < SHA3_ ## BITS ## _RATE; i++) { \
+      k_buf[i] ^= (0x5c ^ 0x36); \
+    } \
+  \
+    /* init outer hash, absorb inner key */ \
+    sha3_ ## BITS ## _init(&(hmac->inner)); \
+    sha3_ ## BITS ## _absorb(&(hmac->inner), k_buf, sizeof(k_buf)); \
+  } \
+  \
+	/* absorb data into hmac-sha3 context */ \
+  _Bool hmac_sha3_ ## BITS ## _absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len) { \
+    return sha3_ ## BITS ## _absorb(&(hmac->inner), src, len); \
+  } \
+  \
+	/* finalize hmac-sha3 context */ \
+  void hmac_sha3_ ## BITS ## _final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
+    /* finalize inner hash into buffer */ \
+    uint8_t buf[SHA3_ ## BITS ## _LEN] = { 0 }; \
+    sha3_ ## BITS ## _final(&(hmac->inner), buf); \
+  \
+    /* absorb into outer hash */ \
+    sha3_ ## BITS ## _absorb(&(hmac->outer), buf, sizeof(buf)); \
+  \
+    /* finalize outer hash into destination */ \
+    sha3_ ## BITS ## _final(&(hmac->outer), dst); \
+  } \
+  \
+	/* one-shot hmac-sha3 */ \
+  void hmac_sha3_ ## BITS(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_## BITS ##_LEN]) { \
+    /* init */ \
+    hmac_sha3_t hmac; \
+    hmac_sha3_## BITS ##_init(&hmac, k, k_len); \
+	\
+    /* absorb */ \
+    hmac_sha3_## BITS ##_absorb(&hmac, m, m_len); \
+	\
+    /* finalize */ \
+    hmac_sha3_## BITS ##_final(&hmac, dst); \
   }
 
-  // init outer hash, absorb outer key
-  sha3_224_init(&(hmac->outer));
-  sha3_224_absorb(&(hmac->outer), k_buf, sizeof(k_buf));
-
-  // remove opad, apply ipad
-  for (size_t i = 0; i < SHA3_224_RATE; i++) {
-    k_buf[i] ^= (0x5c ^ 0x36);
-  }
-
-  // init outer hash, absorb inner key
-  sha3_224_init(&(hmac->inner));
-  sha3_224_absorb(&(hmac->inner), k_buf, sizeof(k_buf));
-}
-
-_Bool hmac_sha3_224_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len) {
-  return sha3_224_absorb(&(hmac->inner), src, len);
-}
-
-void hmac_sha3_224_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_224_LEN]) {
-  // finalize inner hash into buffer
-  uint8_t buf[SHA3_224_LEN] = { 0 };
-  sha3_224_final(&(hmac->inner), buf);
-
-  // absorb into outer hash
-  sha3_224_absorb(&(hmac->outer), buf, sizeof(buf));
-
-  // finalize outer hash into destination
-  sha3_224_final(&(hmac->outer), dst);
-}
-
-void hmac_sha3_224(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_224_LEN]) {
-  // init
-  hmac_sha3_t hmac;
-  hmac_sha3_224_init(&hmac, k, k_len);
-
-  // absorb
-  hmac_sha3_224_absorb(&hmac, m, m_len);
-
-  // finalize
-  hmac_sha3_224_final(&hmac, dst);
-}
-
-void hmac_sha3_256_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) {
-  // clear finalized flag
-  hmac->finalized = false;
-
-  // init key buffer
-  uint8_t k_buf[SHA3_256_RATE] = { 0 };
-  if (k_len <= sizeof(k_buf)) {
-    memcpy(k_buf, k, k_len);
-  } else {
-    sha3_256(k, k_len, k_buf);
-  }
-
-  // apply opad
-  for (size_t i = 0; i < SHA3_256_RATE; i++) {
-    k_buf[i] ^= 0x5c;
-  }
-
-  // init outer hash, absorb outer key
-  sha3_256_init(&(hmac->outer));
-  sha3_256_absorb(&(hmac->outer), k_buf, sizeof(k_buf));
-
-  // remove opad, apply ipad
-  for (size_t i = 0; i < SHA3_256_RATE; i++) {
-    k_buf[i] ^= (0x5c ^ 0x36);
-  }
-
-  // init outer hash, absorb inner key
-  sha3_256_init(&(hmac->inner));
-  sha3_256_absorb(&(hmac->inner), k_buf, sizeof(k_buf));
-}
-
-_Bool hmac_sha3_256_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len) {
-  return sha3_256_absorb(&(hmac->inner), src, len);
-}
-
-void hmac_sha3_256_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_256_LEN]) {
-  // finalize inner hash into buffer
-  uint8_t buf[SHA3_256_LEN] = { 0 };
-  sha3_256_final(&(hmac->inner), buf);
-
-  // absorb into outer hash
-  sha3_256_absorb(&(hmac->outer), buf, sizeof(buf));
-
-  // finalize outer hash into destination
-  sha3_256_final(&(hmac->outer), dst);
-}
-
-void hmac_sha3_256(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_256_LEN]) {
-  // init
-  hmac_sha3_t hmac;
-  hmac_sha3_256_init(&hmac, k, k_len);
-
-  // absorb
-  hmac_sha3_256_absorb(&hmac, m, m_len);
-
-  // finalize
-  hmac_sha3_256_final(&hmac, dst);
-}
-
-void hmac_sha3_384_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) {
-  // clear finalized flag
-  hmac->finalized = false;
-
-  // init key buffer
-  uint8_t k_buf[SHA3_384_RATE] = { 0 };
-  if (k_len <= sizeof(k_buf)) {
-    memcpy(k_buf, k, k_len);
-  } else {
-    sha3_384(k, k_len, k_buf);
-  }
-
-  // apply opad
-  for (size_t i = 0; i < SHA3_384_RATE; i++) {
-    k_buf[i] ^= 0x5c;
-  }
-
-  // init outer hash, absorb outer key
-  sha3_384_init(&(hmac->outer));
-  sha3_384_absorb(&(hmac->outer), k_buf, sizeof(k_buf));
-
-  // remove opad, apply ipad
-  for (size_t i = 0; i < SHA3_384_RATE; i++) {
-    k_buf[i] ^= (0x5c ^ 0x36);
-  }
-
-  // init outer hash, absorb inner key
-  sha3_384_init(&(hmac->inner));
-  sha3_384_absorb(&(hmac->inner), k_buf, sizeof(k_buf));
-}
-
-_Bool hmac_sha3_384_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len) {
-  return sha3_384_absorb(&(hmac->inner), src, len);
-}
-
-void hmac_sha3_384_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_384_LEN]) {
-  // finalize inner hash into buffer
-  uint8_t buf[SHA3_384_LEN] = { 0 };
-  sha3_384_final(&(hmac->inner), buf);
-
-  // absorb into outer hash
-  sha3_384_absorb(&(hmac->outer), buf, sizeof(buf));
-
-  // finalize outer hash into destination
-  sha3_384_final(&(hmac->outer), dst);
-}
-
-void hmac_sha3_384(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_384_LEN]) {
-  // init
-  hmac_sha3_t hmac;
-  hmac_sha3_384_init(&hmac, k, k_len);
-
-  // absorb
-  hmac_sha3_384_absorb(&hmac, m, m_len);
-
-  // finalize
-  hmac_sha3_384_final(&hmac, dst);
-}
-
-void hmac_sha3_512_init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) {
-  // clear finalized flag
-  hmac->finalized = false;
-
-  // init key buffer
-  uint8_t k_buf[SHA3_512_RATE] = { 0 };
-  if (k_len <= sizeof(k_buf)) {
-    memcpy(k_buf, k, k_len);
-  } else {
-    sha3_512(k, k_len, k_buf);
-  }
-
-  // apply opad
-  for (size_t i = 0; i < SHA3_512_RATE; i++) {
-    k_buf[i] ^= 0x5c;
-  }
-
-  // init outer hash, absorb outer key
-  sha3_512_init(&(hmac->outer));
-  sha3_512_absorb(&(hmac->outer), k_buf, sizeof(k_buf));
-
-  // remove opad, apply ipad
-  for (size_t i = 0; i < SHA3_512_RATE; i++) {
-    k_buf[i] ^= (0x5c ^ 0x36);
-  }
-
-  // init outer hash, absorb inner key
-  sha3_512_init(&(hmac->inner));
-  sha3_512_absorb(&(hmac->inner), k_buf, sizeof(k_buf));
-}
-
-_Bool hmac_sha3_512_absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len) {
-  return sha3_512_absorb(&(hmac->inner), src, len);
-}
-
-void hmac_sha3_512_final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_512_LEN]) {
-  // finalize inner hash into buffer
-  uint8_t buf[SHA3_512_LEN] = { 0 };
-  sha3_512_final(&(hmac->inner), buf);
-
-  // absorb into outer hash
-  sha3_512_absorb(&(hmac->outer), buf, sizeof(buf));
-
-  // finalize outer hash into destination
-  sha3_512_final(&(hmac->outer), dst);
-}
-
-void hmac_sha3_512(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_512_LEN]) {
-  // init
-  hmac_sha3_t hmac;
-  hmac_sha3_512_init(&hmac, k, k_len);
-
-  // absorb
-  hmac_sha3_512_absorb(&hmac, m, m_len);
-
-  // finalize
-  hmac_sha3_512_final(&hmac, dst);
-}
+// define hmacs
+DEF_HMAC(224) // hmac-sha3-224
+DEF_HMAC(256) // hmac-sha3-224
+DEF_HMAC(384) // hmac-sha3-224
+DEF_HMAC(512) // hmac-sha3-224
 
 // initialize xof context
 static inline void xof_init(sha3_xof_t * const xof) {
@@ -1055,49 +828,37 @@ static inline void xof_once(const size_t rate, const size_t num_rounds, const ui
   xof_squeeze_raw(&xof, rate, num_rounds, dst, dst_len);
 }
 
-// shake128 input rate, in bytes
-#define SHAKE128_RATE (200 - 2 * 16)
+// define shake iterative context and one-shot functions
+#define DEF_SHAKE(BITS) \
+  /* init shake context */ \
+  void shake ## BITS ## _init(sha3_xof_t * const xof) { \
+    xof_init(xof); \
+  } \
+  \
+  /* absorb bytes into shake context */ \
+  _Bool shake ## BITS ## _absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len) { \
+    return xof_absorb(xof, SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, m, len); \
+  } \
+  \
+  /* squeeze bytes from shake context */ \
+  void shake ## BITS ## _squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) { \
+    xof_squeeze(xof, SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, SHAKE ## BITS ## _PAD, dst, dst_len); \
+  } \
+  \
+  /* one-shot shake absorb and squeeze */ \
+  void shake ## BITS(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
+    xof_once(SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, SHAKE ## BITS ## _PAD, src, src_len, dst, dst_len); \
+  }
 
-// shake128 padding
-#define SHAKE128_PAD 0x1f
+// shake128
+#define SHAKE128_RATE (200 - 2 * 16) // shake128 input rate, in bytes
+#define SHAKE128_PAD 0x1f // shake128 padding
+DEF_SHAKE(128) // shake128_{init,absorb,squeeze}()
 
-void shake128_init(sha3_xof_t * const xof) {
-  xof_init(xof);
-}
-
-_Bool shake128_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len) {
-  return xof_absorb(xof, SHAKE128_RATE, SHA3_NUM_ROUNDS, m, len);
-}
-
-void shake128_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  xof_squeeze(xof, SHAKE128_RATE, SHA3_NUM_ROUNDS, SHAKE128_PAD, dst, dst_len);
-}
-
-void shake128(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE128_RATE, SHA3_NUM_ROUNDS, SHAKE128_PAD, src, src_len, dst, dst_len);
-}
-
-// shake256 input rate, in bytes
-#define SHAKE256_RATE (200 - 2 * 32)
-
-// shake256 padding
-#define SHAKE256_PAD 0x1f
-
-void shake256_init(sha3_xof_t * const xof) {
-  xof_init(xof);
-}
-
-_Bool shake256_absorb(sha3_xof_t * const xof, const uint8_t * const m, const size_t len) {
-  return xof_absorb(xof, SHAKE256_RATE, SHA3_NUM_ROUNDS, m, len);
-}
-
-void shake256_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  xof_squeeze(xof, SHAKE256_RATE, SHA3_NUM_ROUNDS, SHAKE256_PAD, dst, dst_len);
-}
-
-void shake256(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE256_RATE, SHA3_NUM_ROUNDS, SHAKE256_PAD, src, src_len, dst, dst_len);
-}
+// shake256
+#define SHAKE256_RATE (200 - 2 * 32) // shake256 input rate, in bytes
+#define SHAKE256_PAD 0x1f // shake256 padding
+DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
 
 // NIST SP 800-105 utility function.
 static inline size_t left_encode(uint8_t buf[static 9], const uint64_t n) {
