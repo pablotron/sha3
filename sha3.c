@@ -9,8 +9,8 @@
  * following SHA-3 hash functions, XOFs, and HMACs:
  *
  * - SHA3-224, SHA3-256, SHA3-384, and SHA3-512
- * - HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, and HMAC-SHA3-512
  * - SHAKE128 and SHAKE256
+ * - HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, and HMAC-SHA3-512
  * - cSHAKE128, cSHAKE128-XOF, cSHAKE256, and cSHAKE256-XOF
  * - KMAC128, KMAC128-XOF, KMAC256, and KMAC256-XOF
  * - TupleHash128, TupleHash128-XOF, TupleHash256, and TupleHash256-XOF
@@ -552,7 +552,7 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
   memcpy(dst, hash->a.u8, dst_len);
 }
 
-// define sha3 one shot and iterative context functions
+// define hash one-shot and iterative context functions
 #define DEF_HASH(BITS) \
   /* one-shot hash */ \
   void sha3_ ## BITS(const uint8_t *m, size_t m_len, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
@@ -734,6 +734,7 @@ static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, co
   }
 }
 
+// squeeze data from xof
 static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
   // check state
   if (!xof->squeezing) {
@@ -744,6 +745,7 @@ static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const 
   xof_squeeze_raw(xof, rate, num_rounds, dst, dst_len);
 }
 
+// one-shot xof absorb and squeeze
 static inline void xof_once(const size_t rate, const size_t num_rounds, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   // init
   sha3_xof_t xof;
