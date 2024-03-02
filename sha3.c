@@ -1493,57 +1493,41 @@ static inline _Bool turboshake_init(turboshake_t * const ts, const uint8_t pad) 
   return true;
 }
 
-// init turboeshake128 context with custom pad byte.  returns false if the
-// pad byte is out of range.
-_Bool turboshake128_init_custom(turboshake_t * const ts, const uint8_t pad) {
-  return turboshake_init(ts, pad);
-}
+#define DEF_TURBOSHAKE(BITS) \
+  /* init turboshake context with custom pad byte.  returns false if the */ \
+  /* pad byte is out of range. */ \
+  _Bool turboshake ## BITS ## _init_custom(turboshake_t * const ts, const uint8_t pad) { \
+    return turboshake_init(ts, pad); \
+  } \
+  \
+  /* init turboshake context */ \
+  void turboshake ## BITS ## _init(turboshake_t * const ts) { \
+    (void) turboshake_init(ts, TURBOSHAKE_PAD); \
+  } \
+  \
+  /* absorb bytes into turboshake context. */ \
+  _Bool turboshake ## BITS ## _absorb(turboshake_t * const ts, const uint8_t * const m, const size_t len) { \
+    return xof_absorb(&(ts->xof), SHAKE ## BITS ## _RATE, TURBOSHAKE_NUM_ROUNDS, m, len); \
+  } \
+  \
+  /* squeeze bytes from turboshake context */ \
+  void turboshake ## BITS ## _squeeze(turboshake_t * const ts, uint8_t * const dst, const size_t dst_len) { \
+    xof_squeeze(&(ts->xof), SHAKE ## BITS ## _RATE, TURBOSHAKE_NUM_ROUNDS, ts->pad, dst, dst_len); \
+  } \
+  \
+  /* one-shot turboshake with default pad byte */ \
+  void turboshake ## BITS (const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
+    xof_once(SHAKE ## BITS ## _RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len); \
+  } \
+  \
+  /* one-shot turboshake with custom pad byte */ \
+  void turboshake ## BITS ## _custom(const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
+    xof_once(SHAKE ## BITS ## _RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len); \
+  }
 
-// init turboeshake128 context.
-void turboshake128_init(turboshake_t * const ts) {
-  (void) turboshake_init(ts, TURBOSHAKE_PAD);
-}
-
-// absorb bytes into turboshake128 context.
-_Bool turboshake128_absorb(turboshake_t * const ts, const uint8_t * const m, const size_t len) {
-  return xof_absorb(&(ts->xof), SHAKE128_RATE, TURBOSHAKE_NUM_ROUNDS, m, len);
-}
-
-void turboshake128_squeeze(turboshake_t * const ts, uint8_t * const dst, const size_t dst_len) {
-  xof_squeeze(&(ts->xof), SHAKE128_RATE, TURBOSHAKE_NUM_ROUNDS, ts->pad, dst, dst_len);
-}
-
-void turboshake128(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE128_RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len);
-}
-
-void turboshake128_custom(const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE128_RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len);
-}
-
-_Bool turboshake256_init_custom(turboshake_t * const ts, const uint8_t pad) {
-  return turboshake_init(ts, pad);
-}
-
-void turboshake256_init(turboshake_t * const ts) {
-  (void) turboshake_init(ts, TURBOSHAKE_PAD);
-}
-
-_Bool turboshake256_absorb(turboshake_t * const ts, const uint8_t * const m, const size_t len) {
-  return xof_absorb(&(ts->xof), SHAKE256_RATE, TURBOSHAKE_NUM_ROUNDS, m, len);
-}
-
-void turboshake256_squeeze(turboshake_t * const ts, uint8_t * const dst, const size_t dst_len) {
-  xof_squeeze(&(ts->xof), SHAKE256_RATE, TURBOSHAKE_NUM_ROUNDS, ts->pad, dst, dst_len);
-}
-
-void turboshake256(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE256_RATE, TURBOSHAKE_NUM_ROUNDS, TURBOSHAKE_PAD, src, src_len, dst, dst_len);
-}
-
-void turboshake256_custom(const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  xof_once(SHAKE256_RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len);
-}
+// define turboshakes
+DEF_TURBOSHAKE(128) // turboshake128
+DEF_TURBOSHAKE(256) // turboshake128
 
 // kangarootwelve block size, in bytes
 #define K12_BLOCK_LEN 8192
