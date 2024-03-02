@@ -513,39 +513,61 @@ static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size
   return num_bytes;
 }
 
-// get hash rate
+// Get rate (number of bytes that can be absorbed before the internal
+// state is permuted).
 //
-// note: in hash functions, the capacity is always 2 times the
-// destination length, and the rate is the total state size minus the
-// capacity.
-#define HASH_RATE(len) (200 - 2 * (len))
+// For hash functions, the capacity is always 2 times the output length
+// of the hash, and the rate is the total state size (200 bytes) minus
+// the capacity (FIPS 202, Section 5.2).
+//
+// XOFs do not have fixed-length output, but the capacity is 2 times the
+// named strength, and the rate is the total state size (200 bytes)
+// minus the capacity.
+//
+// The table below shows the output size, capacity, and rate for each
+// FIPS 202 function.  All values are in bytes.
+//
+//   ---------------------------------------
+//   | Function | Output | Capacity | Rate |
+//   |----------|--------|----------|------|
+//   | SHA3-224 |     28 |       56 |  144 |
+//   | SHA3-256 |     32 |       64 |  136 |
+//   | SHA3-384 |     48 |       96 |  104 |
+//   | SHA3-512 |     64 |      136 |   72 |
+//   | SHAKE128 |    n/a |       32 |  168 |
+//   | SHAKE256 |    n/a |       64 |  136 |
+//   ---------------------------------------
+//
+#define RATE(len) (200 - 2 * (len))
 
 // one-shot sha3 hash.
 static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
   // init state
   sha3_state_t a = { .u64 = { 0 } };
 
-  // absorb message
-  const size_t len = absorb(&a, 0, HASH_RATE(dst_len), SHA3_NUM_ROUNDS, m, m_len);
+  // absorb message, get new internal length
+  const size_t len = absorb(&a, 0, RATE(dst_len), SHA3_NUM_ROUNDS, m, m_len);
 
   // append suffix and padding
   // (note: suffix and padding are ambiguous in spec)
   a.u8[len] ^= 0x06;
-  a.u8[HASH_RATE(dst_len)-1] ^= 0x80;
+  a.u8[RATE(dst_len)-1] ^= 0x80;
 
-  // permute
+  // final permutation
   permute(a.u64, SHA3_NUM_ROUNDS);
 
   // copy to destination
   memcpy(dst, a.u8, dst_len);
 }
 
-// Initialize iterative sha3 hash context.
+// Initialize iterative hash context.
 static inline void hash_init(sha3_t * const hash) {
   memset(hash, 0, sizeof(sha3_t));
 }
 
-// Absorb input data into iterative SHA-3 hash context.
+// Absorb data into iterative hash context.
+//
+// Returns `false` if the has context has already been finalized.
 static inline bool hash_absorb(sha3_t * const hash, const size_t rate, const uint8_t *src, size_t len) {
   if (hash->finalized) {
     // hash already finalized, return false
@@ -557,7 +579,9 @@ static inline bool hash_absorb(sha3_t * const hash, const size_t rate, const uin
   return true;
 }
 
-// Finalize iterative SHA-3 hash context.
+// Finalize iterative hash context.
+//
+// May be called more than once without affecting the final hash value.
 static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * dst, const size_t dst_len) {
   if (!hash->finalized) {
     // mark context as final
@@ -590,15 +614,15 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
   \
   /* Absorb data into SHA3 iterative hash context. */ \
   _Bool sha3_ ## BITS ## _absorb(sha3_t * const hash, const uint8_t *src, const size_t len) { \
-    return hash_absorb(hash, HASH_RATE(OUT_LEN), src, len); \
+    return hash_absorb(hash, RATE(OUT_LEN), src, len); \
   } \
   \
   /* Finalize SHA3 iterative hash context. */ \
   void sha3_ ## BITS ## _final(sha3_t * const hash, uint8_t dst[static OUT_LEN]) { \
-    hash_final(hash, HASH_RATE(OUT_LEN), dst, OUT_LEN); \
+    hash_final(hash, RATE(OUT_LEN), dst, OUT_LEN); \
   }
 
-// define hashes
+// declare hash functions
 DEF_HASH(224, 28) // sha3-224
 DEF_HASH(256, 32) // sha3-256
 DEF_HASH(384, 48) // sha3-384
@@ -609,17 +633,19 @@ static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-// absorb message into xof context without checking to see if the
+// Absorb data into XOF context without checking to see if the
 // context has already been squeezed.
 //
-// called by `xof_absorb()` and `xof_once()`.
+// Called by `xof_absorb()` and `xof_once()`.
 static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
   xof->num_bytes = absorb(&(xof->a), xof->num_bytes, rate, num_rounds, m, m_len);
 }
 
-// check state, absorb bytes
+// Absorb data into XOF context.
+//
+// Returns `false` if this context has already been squeezed.
 static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t * const m, size_t m_len) {
-  // check state
+  // check context state
   if (xof->squeezing) {
     // xof has already been squeezed, return error
     return false;
@@ -630,7 +656,7 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
   return true;
 }
 
-// finalize absorb
+// Finalize absorb, switch mode of XOF context to squeezing.
 static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t pad) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
@@ -645,7 +671,7 @@ static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, co
   xof->squeezing = true;
 }
 
-// squeeze data without checking state (used by xof_once())
+// Squeeze data without checking mode (used by `xof_once()`).
 static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, uint8_t *dst, size_t dst_len) {
   if (!xof->num_bytes) {
     // num_bytes is zero, so we are reading from the start of the
@@ -735,10 +761,10 @@ static inline void xof_once(const size_t rate, const size_t num_rounds, const ui
 
 // shake padding byte and rates
 #define SHAKE_PAD 0x1f
-#define SHAKE128_RATE (200 - 2 * 16) // shake128 input rate, in bytes
-#define SHAKE256_RATE (200 - 2 * 32) // shake256 input rate, in bytes
+#define SHAKE128_RATE RATE(16) // shake128 input rate, in bytes
+#define SHAKE256_RATE RATE(32) // shake256 input rate, in bytes
 
-// define shake xofs
+// declare shake functions
 DEF_SHAKE(128) // shake128_{init,absorb,squeeze}()
 DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
 
@@ -750,7 +776,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     hmac->finalized = false; \
   \
     /* init key buffer */ \
-    uint8_t k_buf[HASH_RATE(OUT_LEN)] = { 0 }; \
+    uint8_t k_buf[RATE(OUT_LEN)] = { 0 }; \
     if (k_len <= sizeof(k_buf)) { \
       memcpy(k_buf, k, k_len); \
     } else { \
@@ -758,7 +784,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     } \
   \
     /* apply opad */ \
-    for (size_t i = 0; i < HASH_RATE(OUT_LEN); i++) { \
+    for (size_t i = 0; i < RATE(OUT_LEN); i++) { \
       k_buf[i] ^= 0x5c; \
     } \
   \
@@ -767,7 +793,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     sha3_ ## BITS ## _absorb(&(hmac->outer), k_buf, sizeof(k_buf)); \
   \
     /* remove opad, apply ipad */ \
-    for (size_t i = 0; i < HASH_RATE(OUT_LEN); i++) { \
+    for (size_t i = 0; i < RATE(OUT_LEN); i++) { \
       k_buf[i] ^= (0x5c ^ 0x36); \
     } \
   \
@@ -807,7 +833,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     hmac_sha3_## BITS ##_final(&hmac, dst); \
   }
 
-// define hmacs
+// declare hmac-sha3 functions
 DEF_HMAC(224, 28) // hmac-sha3-224
 DEF_HMAC(256, 32) // hmac-sha3-224
 DEF_HMAC(384, 48) // hmac-sha3-224
@@ -1125,6 +1151,7 @@ static inline bytepad_t bytepad(const size_t data_len, const size_t width) {
 		cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
 	}
 
+// declare cshake functions
 DEF_CSHAKE(128) // cshake128
 DEF_CSHAKE(256) // cshake256
 
@@ -1249,10 +1276,11 @@ DEF_CSHAKE(256) // cshake256
     kmac ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
   }
 
-// define kmacs
+// declare kmac functions
 DEF_KMAC(128) // kmac128
 DEF_KMAC(256) // kmac256
 
+// define tuplehash and tuplehash-xof functions
 #define DEF_TUPLEHASH(BITS) \
   /* init tuplehash context */ \
   static inline void tuplehash ## BITS ## _init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) { \
@@ -1321,10 +1349,13 @@ DEF_KMAC(256) // kmac256
     cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
   }
 
+// declare tuplehash functions
 DEF_TUPLEHASH(128) // tuplehash128, tuplehash128-xof
 DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
 
+// define parallelhash and parallelhash-xof functions
 #define DEF_PARALLELHASH(BITS) \
+  /* emit block for current xof into root xof */ \
   static inline void parallelhash ## BITS ## _emit_block(parallelhash_t * const hash) { \
     /* squeeze curr xof, absorb into root xof */ \
     uint8_t buf[BITS / 4]; /* ph128: 32, ph256: 64 */ \
@@ -1335,16 +1366,18 @@ DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
     hash->num_blocks++; \
   } \
   \
+  /* reset context for current internal xof */ \
   static inline void parallelhash ## BITS ## _reset_curr_xof(parallelhash_t *hash) { \
     /* init curr xof */ \
     shake ## BITS ## _init(&(hash->curr_xof)); \
     hash->ofs = 0; \
   } \
   \
+  /* init parallelhash context */ \
   static inline void parallelhash ## BITS ## _init(parallelhash_t *hash, const parallelhash_params_t params) { \
     static const uint8_t NAME[] = { 'P', 'a', 'r', 'a', 'l', 'l', 'e', 'l', 'H', 'a', 's', 'h' }; \
   \
-    /* build root xof cshake ## BITS ##  params */ \
+    /* build root xof cshake params */ \
     const cshake_params_t root_cshake_params = { \
       .name = NAME, \
       .name_len = sizeof(NAME), \
@@ -1371,6 +1404,7 @@ DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
     parallelhash ## BITS ## _reset_curr_xof(hash); \
   } \
   \
+  /* absorb data into parallelhash context */ \
   static inline void parallelhash ## BITS ## _absorb(parallelhash_t * const hash, const uint8_t *msg, size_t msg_len) { \
     while (msg_len > 0) { \
       const size_t len = MIN(msg_len, hash->block_len - hash->ofs); \
@@ -1387,6 +1421,7 @@ DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
     } \
   } \
   \
+  /* squeeze data from parallelhash context */ \
   static inline void parallelhash ## BITS ## _squeeze(parallelhash_t * const hash, uint8_t * const dst, const size_t dst_len) { \
     if (!hash->squeezing) { \
       /* mark as squeezing */ \
@@ -1434,17 +1469,17 @@ DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
     parallelhash ## BITS ## _squeeze(&hash, dst, dst_len); \
   } \
   \
-  /* init parallelhash xof context */ \
+  /* init parallelhash-xof context */ \
   void parallelhash ## BITS ## _xof_init(parallelhash_t *hash, const parallelhash_params_t params) { \
     parallelhash ## BITS ## _init(hash, params); \
   } \
   \
-  /* absorb data into parallelhash xof context */ \
+  /* absorb data into parallelhash-xof context */ \
   void parallelhash ## BITS ## _xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len) { \
     parallelhash ## BITS ## _absorb(hash, msg, msg_len); \
   } \
   \
-  /* squeeze data from parallelhash xof context */ \
+  /* squeeze data from parallelhash-xof context */ \
   void parallelhash ## BITS ## _xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len) { \
     if (!hash->squeezing) { \
       /* emit zero length */ \
@@ -1467,6 +1502,7 @@ DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
     parallelhash ## BITS ## _xof_squeeze(&hash, dst, dst_len); \
   }
 
+// declare parallelhash functions
 DEF_PARALLELHASH(128) // parallelhash128, parallehash128-xof
 DEF_PARALLELHASH(256) // parallelhash256, parallehash256-xof
 
@@ -1493,6 +1529,7 @@ static inline _Bool turboshake_init(turboshake_t * const ts, const uint8_t pad) 
   return true;
 }
 
+// define turboshake functions
 #define DEF_TURBOSHAKE(BITS) \
   /* init turboshake context with custom pad byte.  returns false if the */ \
   /* pad byte is out of range. */ \
@@ -1525,7 +1562,7 @@ static inline _Bool turboshake_init(turboshake_t * const ts, const uint8_t pad) 
     xof_once(SHAKE ## BITS ## _RATE, TURBOSHAKE_NUM_ROUNDS, pad, src, src_len, dst, dst_len); \
   }
 
-// define turboshakes
+// declare turboshake functions
 DEF_TURBOSHAKE(128) // turboshake128
 DEF_TURBOSHAKE(256) // turboshake128
 
