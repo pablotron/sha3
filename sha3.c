@@ -513,21 +513,25 @@ static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size
   return num_bytes;
 }
 
+// get hash rate
+//
+// note: in hash functions, the capacity is always 2 times the
+// destination length, and the rate is the total state size minus the
+// capacity.
+#define HASH_RATE(len) (200 - 2 * (len))
+
 // one-shot sha3 hash.
 static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
-  // in the sha3 hash functions, the capacity is always 2 times the
-  // destination length, and the rate is the total state size minus the
-  // capacity
-  const size_t rate = 200 - 2 * dst_len;
-
+  // init state
   sha3_state_t a = { .u64 = { 0 } };
 
-  const size_t len = absorb(&a, 0, rate, SHA3_NUM_ROUNDS, m, m_len);
+  // absorb message
+  const size_t len = absorb(&a, 0, HASH_RATE(dst_len), SHA3_NUM_ROUNDS, m, m_len);
 
   // append suffix and padding
   // (note: suffix and padding are ambiguous in spec)
   a.u8[len] ^= 0x06;
-  a.u8[rate-1] ^= 0x80;
+  a.u8[HASH_RATE(dst_len)-1] ^= 0x80;
 
   // permute
   permute(a.u64, SHA3_NUM_ROUNDS);
@@ -573,10 +577,10 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
 }
 
 // define hash one-shot and iterative context functions
-#define DEF_HASH(BITS) \
+#define DEF_HASH(BITS, OUT_LEN) \
   /* one-shot hash */ \
-  void sha3_ ## BITS(const uint8_t *m, size_t m_len, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
-    hash_once(m, m_len, dst, SHA3_ ## BITS ## _LEN); \
+  void sha3_ ## BITS(const uint8_t *m, size_t m_len, uint8_t dst[static OUT_LEN]) { \
+    hash_once(m, m_len, dst, OUT_LEN); \
   } \
   \
   /* Initialize iterative hash context. */ \
@@ -586,33 +590,19 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
   \
   /* Absorb data into SHA3 iterative hash context. */ \
   _Bool sha3_ ## BITS ## _absorb(sha3_t * const hash, const uint8_t *src, const size_t len) { \
-    return hash_absorb(hash, SHA3_ ## BITS ## _RATE, src, len); \
+    return hash_absorb(hash, HASH_RATE(OUT_LEN), src, len); \
   } \
   \
   /* Finalize SHA3 iterative hash context. */ \
-  void sha3_ ## BITS ## _final(sha3_t * const hash, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
-    hash_final(hash, SHA3_ ## BITS ## _RATE, dst, SHA3_ ## BITS ## _LEN); \
+  void sha3_ ## BITS ## _final(sha3_t * const hash, uint8_t dst[static OUT_LEN]) { \
+    hash_final(hash, HASH_RATE(OUT_LEN), dst, OUT_LEN); \
   }
 
-// sha3-224
-#define SHA3_224_LEN 28 // sha3-224 output length, in bytes
-#define SHA3_224_RATE 200 - 2 * SHA3_224_LEN // sha3-224 input rate
-DEF_HASH(224) // sha3_224_{init,absorb,final}()
-
-// sha3-256
-#define SHA3_256_LEN 32 // sha3-256 output length, in bytes
-#define SHA3_256_RATE 200 - 2 * SHA3_256_LEN // sha3-256 input rate, in bytes
-DEF_HASH(256) // sha3_256_{init,absorb,final}()
-
-// sha3-384
-#define SHA3_384_LEN 48 // sha3-384 output length, in bytes
-#define SHA3_384_RATE 200 - 2 * SHA3_384_LEN // sha3-384 input rate, in bytes
-DEF_HASH(384) // sha3_384_{init,absorb,final}()
-
-// sha3-512
-#define SHA3_512_LEN 64 // sha3-512 output length, in bytes
-#define SHA3_512_RATE 200 - 2 * SHA3_512_LEN // sha3-512 input rate, in bytes
-DEF_HASH(512) // sha3_512_{init,absorb,final}()
+// define hashes
+DEF_HASH(224, 28) // sha3-224
+DEF_HASH(256, 32) // sha3-256
+DEF_HASH(384, 48) // sha3-384
+DEF_HASH(512, 64) // sha3-512
 
 // initialize xof context
 static inline void xof_init(sha3_xof_t * const xof) {
@@ -735,33 +725,32 @@ static inline void xof_once(const size_t rate, const size_t num_rounds, const ui
   \
   /* squeeze bytes from shake context */ \
   void shake ## BITS ## _squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) { \
-    xof_squeeze(xof, SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, SHAKE ## BITS ## _PAD, dst, dst_len); \
+    xof_squeeze(xof, SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, SHAKE_PAD, dst, dst_len); \
   } \
   \
   /* one-shot shake absorb and squeeze */ \
   void shake ## BITS(const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
-    xof_once(SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, SHAKE ## BITS ## _PAD, src, src_len, dst, dst_len); \
+    xof_once(SHAKE ## BITS ## _RATE, SHA3_NUM_ROUNDS, SHAKE_PAD, src, src_len, dst, dst_len); \
   }
 
-// shake128
+// shake padding byte and rates
+#define SHAKE_PAD 0x1f
 #define SHAKE128_RATE (200 - 2 * 16) // shake128 input rate, in bytes
-#define SHAKE128_PAD 0x1f // shake128 padding
-DEF_SHAKE(128) // shake128_{init,absorb,squeeze}()
-
-// shake256
 #define SHAKE256_RATE (200 - 2 * 32) // shake256 input rate, in bytes
-#define SHAKE256_PAD 0x1f // shake256 padding
+
+// define shake xofs
+DEF_SHAKE(128) // shake128_{init,absorb,squeeze}()
 DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
 
 // define hmac-sha3 iterative context and one-shot functions
-#define DEF_HMAC(BITS) \
+#define DEF_HMAC(BITS, OUT_LEN) \
 	/* init hmac-sha3 context */ \
   void hmac_sha3_ ## BITS ## _init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) { \
     /* clear finalized flag */ \
     hmac->finalized = false; \
   \
     /* init key buffer */ \
-    uint8_t k_buf[SHA3_ ## BITS ## _RATE] = { 0 }; \
+    uint8_t k_buf[HASH_RATE(OUT_LEN)] = { 0 }; \
     if (k_len <= sizeof(k_buf)) { \
       memcpy(k_buf, k, k_len); \
     } else { \
@@ -769,7 +758,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     } \
   \
     /* apply opad */ \
-    for (size_t i = 0; i < SHA3_ ## BITS ## _RATE; i++) { \
+    for (size_t i = 0; i < HASH_RATE(OUT_LEN); i++) { \
       k_buf[i] ^= 0x5c; \
     } \
   \
@@ -778,7 +767,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     sha3_ ## BITS ## _absorb(&(hmac->outer), k_buf, sizeof(k_buf)); \
   \
     /* remove opad, apply ipad */ \
-    for (size_t i = 0; i < SHA3_ ## BITS ## _RATE; i++) { \
+    for (size_t i = 0; i < HASH_RATE(OUT_LEN); i++) { \
       k_buf[i] ^= (0x5c ^ 0x36); \
     } \
   \
@@ -793,9 +782,9 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
   } \
   \
 	/* finalize hmac-sha3 context */ \
-  void hmac_sha3_ ## BITS ## _final(hmac_sha3_t *hmac, uint8_t dst[static SHA3_ ## BITS ## _LEN]) { \
+  void hmac_sha3_ ## BITS ## _final(hmac_sha3_t *hmac, uint8_t dst[static OUT_LEN]) { \
     /* finalize inner hash into buffer */ \
-    uint8_t buf[SHA3_ ## BITS ## _LEN] = { 0 }; \
+    uint8_t buf[OUT_LEN] = { 0 }; \
     sha3_ ## BITS ## _final(&(hmac->inner), buf); \
   \
     /* absorb into outer hash */ \
@@ -806,7 +795,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
   } \
   \
 	/* one-shot hmac-sha3 */ \
-  void hmac_sha3_ ## BITS(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static SHA3_## BITS ##_LEN]) { \
+  void hmac_sha3_ ## BITS(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static OUT_LEN]) { \
     /* init */ \
     hmac_sha3_t hmac; \
     hmac_sha3_## BITS ##_init(&hmac, k, k_len); \
@@ -819,10 +808,10 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
   }
 
 // define hmacs
-DEF_HMAC(224) // hmac-sha3-224
-DEF_HMAC(256) // hmac-sha3-224
-DEF_HMAC(384) // hmac-sha3-224
-DEF_HMAC(512) // hmac-sha3-224
+DEF_HMAC(224, 28) // hmac-sha3-224
+DEF_HMAC(256, 32) // hmac-sha3-224
+DEF_HMAC(384, 48) // hmac-sha3-224
+DEF_HMAC(512, 64) // hmac-sha3-224
 
 // NIST SP 800-105 utility function.
 static inline size_t left_encode(uint8_t buf[static 9], const uint64_t n) {
@@ -1048,19 +1037,19 @@ static inline bytepad_t bytepad(const size_t data_len, const size_t width) {
   return r;
 }
 
-#define CSHAKE128_XOF_RATE (200 - 2 * 16)
-#define CSHAKE128_XOF_PAD 0x04
+// cshake padding byte
+#define CSHAKE_PAD 0x04
 
 _Bool cshake128_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
-  return xof_absorb(xof, CSHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, msg, len);
+  return xof_absorb(xof, SHAKE128_RATE, SHA3_NUM_ROUNDS, msg, len);
 }
 
 void cshake128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
-  xof_squeeze(xof, CSHAKE128_XOF_RATE, SHA3_NUM_ROUNDS, CSHAKE128_XOF_PAD, dst, len);
+  xof_squeeze(xof, SHAKE128_RATE, SHA3_NUM_ROUNDS, CSHAKE_PAD, dst, len);
 }
 
 void cshake128_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
-  static const uint8_t PAD[CSHAKE128_XOF_RATE] = { 0 };
+  static const uint8_t PAD[SHAKE128_RATE] = { 0 };
 
   if (!params.name_len && !params.custom_len) {
     // cshake w/o nist prefix and domain is shake
@@ -1082,7 +1071,7 @@ void cshake128_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
   const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len;
 
   // build bytepad prefix
-  const bytepad_t bp = bytepad(raw_len, CSHAKE128_XOF_RATE);
+  const bytepad_t bp = bytepad(raw_len, SHAKE128_RATE);
 
   // init xof
   xof_init(xof);
@@ -1131,19 +1120,16 @@ void cshake128(
   cshake128_xof_squeeze(&xof, dst, dst_len);
 }
 
-#define CSHAKE256_XOF_RATE (200 - 2 * 32)
-#define CSHAKE256_XOF_PAD 0x04
-
 _Bool cshake256_xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) {
-  return xof_absorb(xof, CSHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, msg, len);
+  return xof_absorb(xof, SHAKE256_RATE, SHA3_NUM_ROUNDS, msg, len);
 }
 
 void cshake256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) {
-  xof_squeeze(xof, CSHAKE256_XOF_RATE, SHA3_NUM_ROUNDS, CSHAKE256_XOF_PAD, dst, len);
+  xof_squeeze(xof, SHAKE256_RATE, SHA3_NUM_ROUNDS, CSHAKE_PAD, dst, len);
 }
 
 void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
-  static const uint8_t PAD[CSHAKE256_XOF_RATE] = { 0 };
+  static const uint8_t PAD[SHAKE256_RATE] = { 0 };
 
   if (!params.name_len && !params.custom_len) {
     // cshake w/o nist prefix and domain is shake
@@ -1165,7 +1151,7 @@ void cshake256_xof_init(sha3_xof_t * const xof, const cshake_params_t params) {
   const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len;
 
   // build bytepad prefix
-  const bytepad_t bp = bytepad(raw_len, CSHAKE256_XOF_RATE);
+  const bytepad_t bp = bytepad(raw_len, SHAKE256_RATE);
 
   // init xof
   xof_init(xof);
@@ -1219,7 +1205,7 @@ void kmac128(
   const uint8_t * const msg, const size_t msg_len,
   uint8_t * const dst, const size_t dst_len
 ) {
-  static const uint8_t PAD[CSHAKE128_XOF_RATE] = { 0 };
+  static const uint8_t PAD[SHAKE128_RATE] = { 0 };
   static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
 
   // build cshake128 params
@@ -1235,7 +1221,7 @@ void kmac128(
   const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
 
   // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, CSHAKE128_XOF_RATE);
+  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE128_RATE);
 
   // init xof
   sha3_xof_t xof;
@@ -1275,7 +1261,7 @@ void kmac256(
   const uint8_t * const msg, const size_t msg_len,
   uint8_t * const dst, const size_t dst_len
 ) {
-  static const uint8_t PAD[CSHAKE256_XOF_RATE] = { 0 };
+  static const uint8_t PAD[SHAKE256_RATE] = { 0 };
   static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
 
   // build cshake256 params
@@ -1291,7 +1277,7 @@ void kmac256(
   const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
 
   // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, CSHAKE256_XOF_RATE);
+  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE256_RATE);
 
   // init xof
   sha3_xof_t xof;
@@ -1340,7 +1326,7 @@ void kmac128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size
 }
 
 void kmac128_xof_init(sha3_xof_t * const xof, const kmac_params_t params) {
-  static const uint8_t PAD[CSHAKE128_XOF_RATE] = { 0 };
+  static const uint8_t PAD[SHAKE128_RATE] = { 0 };
   static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
 
   // build cshake128 params
@@ -1356,7 +1342,7 @@ void kmac128_xof_init(sha3_xof_t * const xof, const kmac_params_t params) {
   const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
 
   // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, CSHAKE128_XOF_RATE);
+  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE128_RATE);
 
   // init xof
   cshake128_xof_init(xof, cshake_params);
@@ -1398,7 +1384,7 @@ void kmac256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size
 }
 
 void kmac256_xof_init(sha3_xof_t * const xof, const kmac_params_t params) {
-  static const uint8_t PAD[CSHAKE256_XOF_RATE] = { 0 };
+  static const uint8_t PAD[SHAKE256_RATE] = { 0 };
   static const uint8_t NAME[4] = { 'K', 'M', 'A', 'C' };
 
   // build cshake256 params
@@ -1414,7 +1400,7 @@ void kmac256_xof_init(sha3_xof_t * const xof, const kmac_params_t params) {
   const size_t key_buf_len = encode_string_prefix(key_buf, params.key_len);
 
   // build bytepad prefix
-  const bytepad_t bp = bytepad(key_buf_len + params.key_len, CSHAKE256_XOF_RATE);
+  const bytepad_t bp = bytepad(key_buf_len + params.key_len, SHAKE256_RATE);
 
   // init xof
   cshake256_xof_init(xof, cshake_params);
