@@ -454,34 +454,63 @@ static inline void permute(uint64_t s[static 25], const size_t num_rounds) {
 }
 #endif /* __AVX512F__ */
 
-// one-shot keccak.
-// NOTE: only used by `hash_once()`.
-static inline size_t keccak(sha3_state_t * const a, const uint8_t *m, size_t m_len, const size_t rate) {
-  while (m_len >= rate) {
-    // absorb u64-sized chunks
-    for (size_t i = 0; i < rate / sizeof(uint64_t); i++) {
-      a->u64[i] ^= ((uint64_t*) m)[i];
+// absorb message into state, return updated byte count
+// used by `hash_absorb()`, `hash_once()`, and `xof_absorb_raw()`
+static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+  // absorb aligned chunks
+  if ((num_bytes & 7) == 0 && (((uintptr_t) m) & 7) == 0) {
+    // absorb 32 byte chunks (4 x uint64)
+    while (m_len >= 32 && num_bytes <= rate - 32) {
+      // xor chunk into state
+      // (FIXME: does not vectorize for some reason, even when unrolled)
+      for (size_t i = 0; i < 4; i++) {
+        a->u64[num_bytes/8 + i] ^= ((uint64_t*) m)[i];
+      }
+
+      // update counters
+      num_bytes += 32;
+      m += 32;
+      m_len -= 32;
+
+      if (num_bytes == rate) {
+        // permute state
+        permute(a->u64, num_rounds);
+        num_bytes = 0;
+      }
     }
 
-    // permute
-    permute(a->u64, SHA3_NUM_ROUNDS);
+    // absorb 8 byte chunks (1 x uint64)
+    while (m_len >= 8 && num_bytes <= rate - 8) {
+      // xor chunk into state
+      a->u64[num_bytes/8] ^= *((uint64_t*) m);
 
-    m += rate;
-    m_len -= rate;
+      // update counters
+      num_bytes += 8;
+      m += 8;
+      m_len -= 8;
+
+      if (num_bytes == rate) {
+        // permute state
+        permute(a->u64, num_rounds);
+        num_bytes = 0;
+      }
+    }
   }
 
-  // absorb u64-sized chunks
-  for (size_t i = 0; i < m_len / sizeof(uint64_t); i++) {
-    a->u64[i] ^= ((uint64_t*) m)[i];
+  // absorb remaining bytes
+  for (size_t i = 0; i < m_len; i++) {
+    // xor byte into state
+    a->u8[num_bytes++] ^= m[i];
+
+    if (num_bytes == rate) {
+      // permute state
+      permute(a->u64, num_rounds);
+      num_bytes = 0;
+    }
   }
 
-  // absorb final bytes
-  for (size_t i = m_len & ~(sizeof(uint64_t) - 1); i < m_len; i++) {
-    a->u8[i] ^= m[i];
-  }
-
-  // return final chunk size
-  return m_len;
+  // return byte count
+  return num_bytes;
 }
 
 // one-shot sha3 hash.
@@ -493,7 +522,7 @@ static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst
 
   sha3_state_t a = { .u64 = { 0 } };
 
-  const size_t len = keccak(&a, m, m_len, rate);
+  const size_t len = absorb(&a, 0, rate, SHA3_NUM_ROUNDS, m, m_len);
 
   // append suffix and padding
   // (note: suffix and padding are ambiguous in spec)
@@ -519,17 +548,8 @@ static inline bool hash_absorb(sha3_t * const hash, const size_t rate, const uin
     return false;
   }
 
-  // absorb bytes (FIXME: absorb larger chunks)
-  for (size_t i = 0; i < len; i++) {
-    hash->a.u8[hash->num_bytes++] ^= src[i];
-    if (hash->num_bytes == rate) {
-      // permute
-      permute(hash->a.u64, SHA3_NUM_ROUNDS);
-      hash->num_bytes = 0;
-    }
-  }
-
-  // return success
+  // absorb bytes, return success
+  hash->num_bytes = absorb(&(hash->a), hash->num_bytes, rate, SHA3_NUM_ROUNDS, src, len);
   return true;
 }
 
@@ -604,63 +624,7 @@ static inline void xof_init(sha3_xof_t * const xof) {
 //
 // called by `xof_absorb()` and `xof_once()`.
 static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
-  // load byte count from context
-  size_t num_bytes = xof->num_bytes;
-
-  // absorb aligned chunks
-  if ((num_bytes & 7) == 0 && (((uintptr_t) m) & 7) == 0) {
-    // absorb 32 byte chunks (4 x uint64)
-    while (num_bytes + 32 <= rate && m_len > 32) {
-      // xor chunk into state
-      // (FIXME: does not vectorize for some reason, even when unrolled)
-      for (size_t i = 0; i < 4; i++) {
-        xof->a.u64[num_bytes/8 + i] ^= ((uint64_t*) m)[i];
-      }
-
-      // update counters
-      num_bytes += 32;
-      m += 32;
-      m_len -= 32;
-
-      if (num_bytes == rate) {
-        // permute state
-        permute(xof->a.u64, num_rounds);
-        num_bytes = 0;
-      }
-    }
-
-    // absorb 8 byte chunks (1 x uint64)
-    while (num_bytes + 8 <= rate && m_len > 8) {
-      // xor chunk into state
-      xof->a.u64[num_bytes/8] ^= *((uint64_t*) m);
-
-      // update counters
-      num_bytes += 8;
-      m += 8;
-      m_len -= 8;
-
-      if (num_bytes == rate) {
-        // permute state
-        permute(xof->a.u64, num_rounds);
-        num_bytes = 0;
-      }
-    }
-  }
-
-  // absorb remaining bytes
-  for (size_t i = 0; i < m_len; i++) {
-    // xor byte into state
-    xof->a.u8[num_bytes++] ^= m[i];
-
-    if (num_bytes == rate) {
-      // permute state
-      permute(xof->a.u64, num_rounds);
-      num_bytes = 0;
-    }
-  }
-
-  // save byte count to context
-  xof->num_bytes = num_bytes;
+  xof->num_bytes = absorb(&(xof->a), xof->num_bytes, rate, num_rounds, m, m_len);
 }
 
 // check state, absorb bytes
@@ -671,10 +635,8 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
     return false;
   }
 
-  // absorb
+  // absorb, return success
   xof_absorb_raw(xof, rate, num_rounds, m, m_len);
-
-  // return success
   return true;
 }
 
