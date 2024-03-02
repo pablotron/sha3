@@ -897,31 +897,22 @@ static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-// absorb large message into context by doing the following:
+// absorb message into xof context without checking to see if the
+// context has already been squeezed.
 //
-// 1. copy context state to local state.
-// 2. absorb message in chunks into local state.
-// 3. copy local state back to context.
-//
-// Called by `xof_absorb_raw()` to absorb large messages.
-static inline void xof_absorb_raw_large(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
-  // load state and byte count from context
-  // TODO: benchmark this to see if it's faster
-  sha3_state_t a = xof->a;
+// called by `xof_absorb()` and `xof_once()`.
+static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
+  // load byte count from context
   size_t num_bytes = xof->num_bytes;
 
-  // absorb chunks
-  if ((num_bytes & 7) == 0) {
+  // absorb aligned chunks
+  if ((num_bytes & 7) == 0 && (((uintptr_t) m) & 7) == 0) {
     // absorb 32 byte chunks (4 x uint64)
     while (num_bytes + 32 <= rate && m_len > 32) {
-      // copy chunk (to avoid `m` alignment issues)
-      uint64_t vals[4];
-      memcpy(vals, m, 4 * sizeof(uint64_t));
-
       // xor chunk into state
       // (FIXME: does not vectorize for some reason, even when unrolled)
       for (size_t i = 0; i < 4; i++) {
-        a.u64[num_bytes/8 + i] ^= vals[i];
+        xof->a.u64[num_bytes/8 + i] ^= ((uint64_t*) m)[i];
       }
 
       // update counters
@@ -931,19 +922,15 @@ static inline void xof_absorb_raw_large(sha3_xof_t * const xof, const size_t rat
 
       if (num_bytes == rate) {
         // permute state
-        permute(a.u64, num_rounds);
+        permute(xof->a.u64, num_rounds);
         num_bytes = 0;
       }
     }
 
     // absorb 8 byte chunks (1 x uint64)
     while (num_bytes + 8 <= rate && m_len > 8) {
-      // copy chunk (to avoid `m` alignment issues)
-      uint64_t val;
-      memcpy(&val, m, sizeof(uint64_t));
-
       // xor chunk into state
-      a.u64[num_bytes/8] ^= val;
+      xof->a.u64[num_bytes/8] ^= *((uint64_t*) m);
 
       // update counters
       num_bytes += 8;
@@ -952,36 +939,13 @@ static inline void xof_absorb_raw_large(sha3_xof_t * const xof, const size_t rat
 
       if (num_bytes == rate) {
         // permute state
-        permute(a.u64, num_rounds);
+        permute(xof->a.u64, num_rounds);
         num_bytes = 0;
       }
     }
   }
 
   // absorb remaining bytes
-  for (size_t i = 0; i < m_len; i++) {
-    // xor byte into state
-    a.u8[num_bytes++] ^= m[i];
-
-    if (num_bytes == rate) {
-      // permute state
-      permute(a.u64, num_rounds);
-      num_bytes = 0;
-    }
-  }
-
-  // save state and byte count to context
-  xof->a = a;
-  xof->num_bytes = num_bytes;
-}
-
-// absorb small message into context.  used by `xor_absorb_raw()` for
-// short messages.
-static inline void xof_absorb_raw_small(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
-  // load byte count from context
-  size_t num_bytes = xof->num_bytes;
-
-  // absorb bytes
   for (size_t i = 0; i < m_len; i++) {
     // xor byte into state
     xof->a.u8[num_bytes++] ^= m[i];
@@ -995,20 +959,6 @@ static inline void xof_absorb_raw_small(sha3_xof_t * const xof, const size_t rat
 
   // save byte count to context
   xof->num_bytes = num_bytes;
-}
-
-// absorb message into xof context without checking to see if the
-// context has already been squeezed.
-//
-// called by `xof_absorb()` and `xof_once()`.
-static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const size_t num_rounds, const uint8_t *m, size_t m_len) {
-  if ((xof->num_bytes & 7) == 0 && m_len > 32) {
-    // large message, absorb in chunks.
-    xof_absorb_raw_large(xof, rate, num_rounds, m, m_len);
-  } else {
-    // short message, absorb as bytes.
-    xof_absorb_raw_small(xof, rate, num_rounds, m, m_len);
-  }
 }
 
 // check state, absorb bytes
