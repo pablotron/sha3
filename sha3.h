@@ -323,6 +323,188 @@ _Bool sha3_512_absorb(sha3_t *hash, const uint8_t *src, const size_t len);
 void sha3_512_final(sha3_t *hash, uint8_t dst[64]);
 
 /**
+ * @defgroup shake SHAKE
+ *
+ * @brief [SHA-3][] [Extendable-output functions (XOFs)][xof] with
+ * arbitrary length output, as defined in section 6.2 of [FIPS 202][].
+ *
+ * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
+ *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
+ * [SHA-3]: https://en.wikipedia.org/wiki/SHA-3
+ *   "Secure Hash Algorithm 3"
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+
+/**
+ * @brief Iterative [XOF][] context (all members are private).
+ * @ingroup shake
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+typedef struct {
+  size_t num_bytes; /**< number of bytes absorbed */
+  sha3_state_t a; /**< internal state */
+  _Bool squeezing; /**< mode (absorbing or squeezing) */
+} sha3_xof_t;
+
+/**
+ * @brief Initialize SHAKE128 [extendable-output function (XOF)][xof] context.
+ * @ingroup shake
+ *
+ * @param[out] xof SHAKE128 [XOF][] context.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+void shake128_init(sha3_xof_t * const xof);
+
+/**
+ * @brief Absorb data into SHAKE128 [XOF][] context.
+ * @ingroup shake
+ *
+ * Absorb input data in `msg` of length `len` bytes into SHAKE128
+ * [XOF][] context `xof`.  Can be called iteratively to absorb input
+ * data in chunks.
+ *
+ * @param[in,out] xof SHAKE128 [XOF][] context.
+ * @param[in] msg Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+_Bool shake128_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+
+/**
+ * @brief Squeeze bytes from SHAKE128 [XOF][] context.
+ * @ingroup shake
+ *
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * SHAKE128 [XOF][] context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * @param[in,out] xof SHAKE128 [XOF][] context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+void shake128_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+
+/**
+ * @brief Absorb data into SHAKE128 [XOF][], then squeeze bytes out.
+ * @ingroup shake
+ *
+ * Absorb data in buffer `src` of length `src_len` bytes into SHAKE128
+ * [XOF][] context, then squeeze `dst_len` bytes of output into
+ * destination buffer `dst`.
+ *
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake128
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+void shake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
+ * @brief Initialize SHAKE256 [extendable-output function (XOF)][xof]
+ * context.
+ * @ingroup shake
+ *
+ * @param[out] xof SHAKE256 [XOF][] context.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+void shake256_init(sha3_xof_t *xof);
+
+/**
+ * @brief Absorb data into SHAKE256 [XOF][] context.
+ * @ingroup shake
+ *
+ * Absorb input data in `msg` of length `len` bytes into SHAKE256
+ * [XOF][] context `xof`.  Can be called iteratively to absorb input
+ * data in chunks.
+ *
+ * @param[in,out] xof SHAKE256 [XOF][] context.
+ * @param[in] msg Input data.
+ * @param[in] len Input data length, in bytes.
+ *
+ * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+_Bool shake256_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
+
+/**
+ * @brief Squeeze bytes from SHAKE256 [XOF][] context.
+ * @ingroup shake
+ *
+ * Squeeze `len` bytes of output into destination buffer `dst` from
+ * SHAKE256 [XOF][] context `xof`.  Can be called iteratively to squeeze
+ * output data in chunks.
+ *
+ * @param[in,out] xof SHAKE256 [XOF][] context.
+ * @param[out] dst Destination buffer.
+ * @param[in] len Destination buffer length, in bytes.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+void shake256_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
+
+/**
+ * @brief Absorb data into SHAKE256 [XOF][], then squeeze bytes out.
+ * @ingroup shake
+ *
+ * Absorb data in buffer `src` of length `src_len` bytes into SHAKE256
+ * [XOF][] context, then squeeze `dst_len` bytes of output into
+ * destination buffer `dst`.
+ *
+ * @param[in] src Source buffer.
+ * @param[in] src_len Source buffer length, in bytes.
+ * @param[out] dst Destination buffer.
+ * @param[in] dst_len Destination buffer length, in bytes.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c shake256
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+void shake256(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
+
+/**
  * @defgroup hmac HMAC
  *
  * @brief [HMAC][hmac] instantiated with [SHA-3][] hash functions, as
@@ -659,187 +841,6 @@ _Bool hmac_sha3_512_absorb(hmac_sha3_t *ctx, const uint8_t *src, const size_t le
  */
 void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
 
-/**
- * @defgroup shake SHAKE
- *
- * @brief [SHA-3][] [Extendable-output functions (XOFs)][xof] with
- * arbitrary length output, as defined in section 6.2 of [FIPS 202][].
- *
- * [FIPS 202]: https://csrc.nist.gov/pubs/fips/202/final
- *   "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
- * [SHA-3]: https://en.wikipedia.org/wiki/SHA-3
- *   "Secure Hash Algorithm 3"
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-
-/**
- * @brief Iterative [XOF][] context (all members are private).
- * @ingroup shake
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-typedef struct {
-  size_t num_bytes; /**< number of bytes absorbed */
-  sha3_state_t a; /**< internal state */
-  _Bool squeezing; /**< mode (absorbing or squeezing) */
-} sha3_xof_t;
-
-/**
- * @brief Initialize SHAKE128 [extendable-output function (XOF)][xof] context.
- * @ingroup shake
- *
- * @param[out] xof SHAKE128 [XOF][] context.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-void shake128_init(sha3_xof_t * const xof);
-
-/**
- * @brief Absorb data into SHAKE128 [XOF][] context.
- * @ingroup shake
- *
- * Absorb input data in `msg` of length `len` bytes into SHAKE128
- * [XOF][] context `xof`.  Can be called iteratively to absorb input
- * data in chunks.
- *
- * @param[in,out] xof SHAKE128 [XOF][] context.
- * @param[in] msg Input data.
- * @param[in] len Input data length, in bytes.
- *
- * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-_Bool shake128_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
-
-/**
- * @brief Squeeze bytes from SHAKE128 [XOF][] context.
- * @ingroup shake
- *
- * Squeeze `len` bytes of output into destination buffer `dst` from
- * SHAKE128 [XOF][] context `xof`.  Can be called iteratively to squeeze
- * output data in chunks.
- *
- * @param[in,out] xof SHAKE128 [XOF][] context.
- * @param[out] dst Destination buffer.
- * @param[in] len Destination buffer length, in bytes.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128_ctx
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-void shake128_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
-
-/**
- * @brief Absorb data into SHAKE128 [XOF][], then squeeze bytes out.
- * @ingroup shake
- *
- * Absorb data in buffer `src` of length `src_len` bytes into SHAKE128
- * [XOF][] context, then squeeze `dst_len` bytes of output into
- * destination buffer `dst`.
- *
- * @param[in] src Source buffer.
- * @param[in] src_len Source buffer length, in bytes.
- * @param[out] dst Destination buffer.
- * @param[in] dst_len Destination buffer length, in bytes.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake128
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-void shake128(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
-
-/**
- * @brief Initialize SHAKE256 [extendable-output function (XOF)][xof]
- * context.
- * @ingroup shake
- *
- * @param[out] xof SHAKE256 [XOF][] context.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-void shake256_init(sha3_xof_t *xof);
-
-/**
- * @brief Absorb data into SHAKE256 [XOF][] context.
- * @ingroup shake
- *
- * Absorb input data in `msg` of length `len` bytes into SHAKE256
- * [XOF][] context `xof`.  Can be called iteratively to absorb input
- * data in chunks.
- *
- * @param[in,out] xof SHAKE256 [XOF][] context.
- * @param[in] msg Input data.
- * @param[in] len Input data length, in bytes.
- *
- * @return True if data was absorbed, and false otherwise (e.g., if context has already been squeezed).
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-_Bool shake256_absorb(sha3_xof_t *xof, const uint8_t *msg, const size_t len);
-
-/**
- * @brief Squeeze bytes from SHAKE256 [XOF][] context.
- * @ingroup shake
- *
- * Squeeze `len` bytes of output into destination buffer `dst` from
- * SHAKE256 [XOF][] context `xof`.  Can be called iteratively to squeeze
- * output data in chunks.
- *
- * @param[in,out] xof SHAKE256 [XOF][] context.
- * @param[out] dst Destination buffer.
- * @param[in] len Destination buffer length, in bytes.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256_ctx
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-void shake256_squeeze(sha3_xof_t *xof, uint8_t *dst, const size_t len);
-
-/**
- * @brief Absorb data into SHAKE256 [XOF][], then squeeze bytes out.
- * @ingroup shake
- *
- * Absorb data in buffer `src` of length `src_len` bytes into SHAKE256
- * [XOF][] context, then squeeze `dst_len` bytes of output into
- * destination buffer `dst`.
- *
- * @param[in] src Source buffer.
- * @param[in] src_len Source buffer length, in bytes.
- * @param[out] dst Destination buffer.
- * @param[in] dst_len Destination buffer length, in bytes.
- *
- * Example:
- * @snippet{trimleft} 06-all/all-fns.c shake256
- *
- * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
- *   "Extendable-Output Function (XOF)"
- */
-void shake256(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len);
 
 /**
  * @defgroup cshake cSHAKE
