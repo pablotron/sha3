@@ -1253,129 +1253,76 @@ DEF_CSHAKE(256) // cshake256
 DEF_KMAC(128) // kmac128
 DEF_KMAC(256) // kmac256
 
-static inline void tuplehash128_init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) {
-  static const uint8_t NAME[] = { 'T', 'u', 'p', 'l', 'e', 'H', 'a', 's', 'h' };
-
-  // build cshake128 params
-  const cshake_params_t cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // init xof
-  cshake128_xof_init(xof, cshake_params);
-
-  // absorb tuples
-  // FIXME: length counter in 800-185 is wrong here
-  for (size_t i = 0; i < params.num_strs; i++) {
-    // absorb length
-    uint8_t buf[9] = { 0 };
-    const size_t buf_len = encode_string_prefix(buf, params.strs[i].len);
-    (void) cshake128_xof_absorb(xof, buf, buf_len);
-
-    // absorb content
-    if (params.strs[i].len > 0) {
-      (void) cshake128_xof_absorb(xof, params.strs[i].ptr, params.strs[i].len);
-    }
+#define DEF_TUPLEHASH(BITS) \
+  /* init tuplehash context */ \
+  static inline void tuplehash ## BITS ## _init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) { \
+    static const uint8_t NAME[] = { 'T', 'u', 'p', 'l', 'e', 'H', 'a', 's', 'h' }; \
+  \
+    /* build cshake ## BITS ##  params */ \
+    const cshake_params_t cshake_params = { \
+      .name = NAME, \
+      .name_len = sizeof(NAME), \
+      .custom = params.custom, \
+      .custom_len = params.custom_len, \
+    }; \
+  \
+    /* init xof */ \
+    cshake ## BITS ## _xof_init(xof, cshake_params); \
+  \
+    /* absorb tuples */ \
+    /* FIXME: length counter in 800-185 is wrong here */ \
+    for (size_t i = 0; i < params.num_strs; i++) { \
+      /* absorb length */ \
+      uint8_t buf[9] = { 0 }; \
+      const size_t buf_len = encode_string_prefix(buf, params.strs[i].len); \
+      (void) cshake ## BITS ## _xof_absorb(xof, buf, buf_len); \
+  \
+      /* absorb content */ \
+      if (params.strs[i].len > 0) { \
+        (void) cshake ## BITS ## _xof_absorb(xof, params.strs[i].ptr, params.strs[i].len); \
+      } \
+    } \
+  \
+    /* build output length suffix */ \
+    uint8_t suffix_buf[9] = { 0 }; \
+    const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3); \
+  \
+    /* absorb output length suffix */ \
+    (void) cshake ## BITS ## _xof_absorb(xof, suffix_buf, suffix_buf_len); \
+  } \
+  \
+  /* one-shot tuplehash with fixed-length output (non-xof) */ \
+  void tuplehash ## BITS (const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) { \
+    /* init */ \
+    sha3_xof_t xof; \
+    tuplehash ## BITS ## _init(&xof, params, dst_len); \
+  \
+    /* squeeze */ \
+    cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
+  } \
+  \
+  /* init tuplehash context */ \
+  void tuplehash ## BITS ## _xof_init(sha3_xof_t * const xof, const tuplehash_params_t params) { \
+    tuplehash ## BITS ## _init(xof, params, 0); \
+  } \
+  \
+  /* squeeze data from tuplehash */ \
+  void tuplehash ## BITS ## _xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) { \
+    cshake ## BITS ## _xof_squeeze(xof, dst, dst_len); \
+  } \
+  \
+  /* one-shot tuplehash-xof */ \
+  void tuplehash ## BITS ## _xof_once(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) { \
+    /* init xof */ \
+    sha3_xof_t xof; \
+    tuplehash ## BITS ## _xof_init(&xof, params); \
+  \
+    /* squeeze */ \
+    cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
   }
 
-  // build output length suffix
-  uint8_t suffix_buf[9] = { 0 };
-  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
-
-  // absorb output length suffix
-  (void) cshake128_xof_absorb(xof, suffix_buf, suffix_buf_len);
-}
-
-void tuplehash128(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
-  // init
-  sha3_xof_t xof;
-  tuplehash128_init(&xof, params, dst_len);
-
-  // squeeze
-  cshake128_xof_squeeze(&xof, dst, dst_len);
-}
-
-void tuplehash128_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params) {
-  tuplehash128_init(xof, params, 0);
-}
-
-void tuplehash128_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  cshake128_xof_squeeze(xof, dst, dst_len);
-}
-
-void tuplehash128_xof_once(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
-  // init xof
-  sha3_xof_t xof;
-  tuplehash128_xof_init(&xof, params);
-
-  // squeeze
-  cshake128_xof_squeeze(&xof, dst, dst_len);
-}
-
-static inline void tuplehash256_init(sha3_xof_t * const xof, const tuplehash_params_t params, const size_t dst_len) {
-  static const uint8_t NAME[] = { 'T', 'u', 'p', 'l', 'e', 'H', 'a', 's', 'h' };
-
-  // build cshake256 params
-  const cshake_params_t cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // init xof
-  cshake256_xof_init(xof, cshake_params);
-
-  // absorb tuples
-  // FIXME: length counter in 800-185 is wrong here
-  for (size_t i = 0; i < params.num_strs; i++) {
-    // absorb length
-    uint8_t buf[9] = { 0 };
-    const size_t buf_len = encode_string_prefix(buf, params.strs[i].len);
-    (void) cshake256_xof_absorb(xof, buf, buf_len);
-
-    // absorb content
-    if (params.strs[i].len > 0) {
-      (void) cshake256_xof_absorb(xof, params.strs[i].ptr, params.strs[i].len);
-    }
-  }
-
-  // build output length suffix
-  uint8_t suffix_buf[9] = { 0 };
-  const size_t suffix_buf_len = right_encode(suffix_buf, dst_len << 3);
-
-  // absorb output length suffix
-  (void) cshake256_xof_absorb(xof, suffix_buf, suffix_buf_len);
-}
-
-void tuplehash256(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
-  // init
-  sha3_xof_t xof;
-  tuplehash256_init(&xof, params, dst_len);
-
-  // squeeze
-  cshake256_xof_squeeze(&xof, dst, dst_len);
-}
-
-void tuplehash256_xof_init(sha3_xof_t * const xof, const tuplehash_params_t params) {
-  tuplehash256_init(xof, params, 0);
-}
-
-void tuplehash256_xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t dst_len) {
-  cshake256_xof_squeeze(xof, dst, dst_len);
-}
-
-void tuplehash256_xof_once(const tuplehash_params_t params, uint8_t * const dst, const size_t dst_len) {
-  // init xof
-  sha3_xof_t xof;
-  tuplehash256_xof_init(&xof, params);
-
-  // squeeze
-  cshake256_xof_squeeze(&xof, dst, dst_len);
-}
+DEF_TUPLEHASH(128) // tuplehash128, tuplehash128-xof
+DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
 
 static void parallelhash128_emit_block(parallelhash_t * const hash) {
   // squeeze curr xof, absorb into root xof
