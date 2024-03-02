@@ -1324,279 +1324,151 @@ DEF_KMAC(256) // kmac256
 DEF_TUPLEHASH(128) // tuplehash128, tuplehash128-xof
 DEF_TUPLEHASH(256) // tuplehash256, tuplehash256-xof
 
-static void parallelhash128_emit_block(parallelhash_t * const hash) {
-  // squeeze curr xof, absorb into root xof
-  uint8_t buf[32];
-  shake128_squeeze(&(hash->curr_xof), buf, sizeof(buf));
-  (void) cshake128_xof_absorb(&(hash->root_xof), buf, sizeof(buf));
-
-  // increment block count
-  hash->num_blocks++;
-}
-
-static inline void parallelhash128_reset_curr_xof(parallelhash_t *hash) {
-  // init curr xof
-  shake128_init(&(hash->curr_xof));
-  hash->ofs = 0;
-}
-
-static inline void parallelhash128_init(parallelhash_t *hash, const parallelhash_params_t params) {
-  static const uint8_t NAME[] = { 'P', 'a', 'r', 'a', 'l', 'l', 'e', 'l', 'H', 'a', 's', 'h' };
-
-  // build root xof cshake128 params
-  const cshake_params_t root_cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // init root xof
-  cshake128_xof_init(&(hash->root_xof), root_cshake_params);
-
-  // build block size
-  uint8_t buf[9] = { 0 };
-  const size_t buf_len = left_encode(buf, params.block_len);
-
-  // absorb block length into root xof
-  (void) cshake128_xof_absorb(&(hash->root_xof), buf, buf_len);
-
-  // set parameters
-  hash->block_len = params.block_len;
-  hash->num_blocks = 0;
-  hash->squeezing = false;
-
-  // init curr xof
-  parallelhash128_reset_curr_xof(hash);
-}
-
-static inline void parallelhash128_absorb(parallelhash_t * const hash, const uint8_t *msg, size_t msg_len) {
-  while (msg_len > 0) {
-    const size_t len = MIN(msg_len, hash->block_len - hash->ofs);
-    (void) shake128_absorb(&(hash->curr_xof), msg, len);
-    msg += len;
-    msg_len -= len;
-
-    hash->ofs += len;
-    if (hash->ofs == hash->block_len) {
-      // emit block, reset curr xof
-      parallelhash128_emit_block(hash);
-      parallelhash128_reset_curr_xof(hash);
-    }
-  }
-}
-
-static inline void parallelhash128_squeeze(parallelhash_t * const hash, uint8_t * const dst, const size_t dst_len) {
-  if (!hash->squeezing) {
-    // mark as squeezing
-    hash->squeezing = true;
-
-    if (hash->ofs > 0) {
-      // squeeze curr xof, absorb into root xof
-      parallelhash128_emit_block(hash);
-    }
-
-    {
-      // build num blocks suffix
-      uint8_t buf[9] = { 0 };
-      const size_t len = right_encode(buf, hash->num_blocks);
-
-      // absorb num blocks suffix into root xof
-      (void) cshake128_xof_absorb(&(hash->root_xof), buf, len);
-    }
-
-    {
-      // build output size suffix
-      uint8_t buf[9] = { 0 };
-      const size_t len = right_encode(buf, dst_len << 3);
-
-      // absorb output size suffix into root xof
-      (void) cshake128_xof_absorb(&(hash->root_xof), buf, len);
-    }
-  }
-
-  if (dst_len > 0) {
-    cshake128_xof_squeeze(&(hash->root_xof), dst, dst_len);
-  }
-}
-
-void parallelhash128(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  // init
-  parallelhash_t hash;
-  parallelhash128_init(&hash, params);
-
-  // absorb
-  parallelhash128_absorb(&hash, src, src_len);
-
-  // squeeze
-  parallelhash128_squeeze(&hash, dst, dst_len);
-}
-
-void parallelhash128_xof_init(parallelhash_t *hash, const parallelhash_params_t params) {
-  parallelhash128_init(hash, params);
-}
-
-void parallelhash128_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len) {
-  parallelhash128_absorb(hash, msg, msg_len);
-}
-
-void parallelhash128_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len) {
-  if (!hash->squeezing) {
-    // emit zero length
-    parallelhash128_squeeze(hash, dst, 0);
-  }
-
-  parallelhash128_squeeze(hash, dst, dst_len);
-}
-
-void parallelhash128_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  // init
-  parallelhash_t hash;
-  parallelhash128_xof_init(&hash, params);
-
-  // absorb
-  parallelhash128_xof_absorb(&hash, src, src_len);
-
-  // squeeze
-  parallelhash128_xof_squeeze(&hash, dst, dst_len);
-}
-
-static void parallelhash256_emit_block(parallelhash_t * const hash) {
-  // squeeze curr xof, absorb into root xof
-  uint8_t buf[64];
-  shake256_squeeze(&(hash->curr_xof), buf, sizeof(buf));
-  (void) cshake256_xof_absorb(&(hash->root_xof), buf, sizeof(buf));
-
-  // increment block count
-  hash->num_blocks++;
-}
-
-static inline void parallelhash256_reset_curr_xof(parallelhash_t *hash) {
-  // init curr xof
-  shake256_init(&(hash->curr_xof));
-  hash->ofs = 0;
-}
-
-static inline void parallelhash256_init(parallelhash_t *hash, const parallelhash_params_t params) {
-  static const uint8_t NAME[] = { 'P', 'a', 'r', 'a', 'l', 'l', 'e', 'l', 'H', 'a', 's', 'h' };
-
-  // build root xof cshake256 params
-  const cshake_params_t root_cshake_params = {
-    .name = NAME,
-    .name_len = sizeof(NAME),
-    .custom = params.custom,
-    .custom_len = params.custom_len,
-  };
-
-  // init root xof
-  cshake256_xof_init(&(hash->root_xof), root_cshake_params);
-
-  // build block size
-  uint8_t buf[9] = { 0 };
-  const size_t buf_len = left_encode(buf, params.block_len);
-
-  // absorb block length into root xof
-  (void) cshake256_xof_absorb(&(hash->root_xof), buf, buf_len);
-
-  // set parameters
-  hash->block_len = params.block_len;
-  hash->num_blocks = 0;
-  hash->squeezing = false;
-
-  // init curr xof
-  parallelhash256_reset_curr_xof(hash);
-}
-
-static inline void parallelhash256_absorb(parallelhash_t * const hash, const uint8_t *msg, size_t msg_len) {
-  while (msg_len > 0) {
-    const size_t len = MIN(msg_len, hash->block_len - hash->ofs);
-    (void) shake256_absorb(&(hash->curr_xof), msg, len);
-    msg += len;
-    msg_len -= len;
-
-    hash->ofs += len;
-    if (hash->ofs == hash->block_len) {
-      // emit block, reset curr xof
-      parallelhash256_emit_block(hash);
-      parallelhash256_reset_curr_xof(hash);
-    }
-  }
-}
-
-static inline void parallelhash256_squeeze(parallelhash_t * const hash, uint8_t * const dst, const size_t dst_len) {
-  if (!hash->squeezing) {
-    // mark as squeezing
-    hash->squeezing = true;
-
-    if (hash->ofs > 0) {
-      // squeeze curr xof, absorb into root xof
-      parallelhash256_emit_block(hash);
-    }
-
-    {
-      // build num blocks suffix
-      uint8_t buf[9] = { 0 };
-      const size_t len = right_encode(buf, hash->num_blocks);
-
-      // absorb num blocks suffix into root xof
-      (void) cshake256_xof_absorb(&(hash->root_xof), buf, len);
-    }
-
-    {
-      // build output size suffix
-      uint8_t buf[9] = { 0 };
-      const size_t len = right_encode(buf, dst_len << 3);
-
-      // absorb output size suffix into root xof
-      (void) cshake256_xof_absorb(&(hash->root_xof), buf, len);
-    }
+#define DEF_PARALLELHASH(BITS) \
+  static inline void parallelhash ## BITS ## _emit_block(parallelhash_t * const hash) { \
+    /* squeeze curr xof, absorb into root xof */ \
+    uint8_t buf[BITS / 4]; /* ph128: 32, ph256: 64 */ \
+    shake ## BITS ## _squeeze(&(hash->curr_xof), buf, sizeof(buf)); \
+    (void) cshake ## BITS ## _xof_absorb(&(hash->root_xof), buf, sizeof(buf)); \
+  \
+    /* increment block count */ \
+    hash->num_blocks++; \
+  } \
+  \
+  static inline void parallelhash ## BITS ## _reset_curr_xof(parallelhash_t *hash) { \
+    /* init curr xof */ \
+    shake ## BITS ## _init(&(hash->curr_xof)); \
+    hash->ofs = 0; \
+  } \
+  \
+  static inline void parallelhash ## BITS ## _init(parallelhash_t *hash, const parallelhash_params_t params) { \
+    static const uint8_t NAME[] = { 'P', 'a', 'r', 'a', 'l', 'l', 'e', 'l', 'H', 'a', 's', 'h' }; \
+  \
+    /* build root xof cshake ## BITS ##  params */ \
+    const cshake_params_t root_cshake_params = { \
+      .name = NAME, \
+      .name_len = sizeof(NAME), \
+      .custom = params.custom, \
+      .custom_len = params.custom_len, \
+    }; \
+  \
+    /* init root xof */ \
+    cshake ## BITS ## _xof_init(&(hash->root_xof), root_cshake_params); \
+  \
+    /* build block size */ \
+    uint8_t buf[9] = { 0 }; \
+    const size_t buf_len = left_encode(buf, params.block_len); \
+  \
+    /* absorb block length into root xof */ \
+    (void) cshake ## BITS ## _xof_absorb(&(hash->root_xof), buf, buf_len); \
+  \
+    /* set parameters */ \
+    hash->block_len = params.block_len; \
+    hash->num_blocks = 0; \
+    hash->squeezing = false; \
+  \
+    /* init curr xof */ \
+    parallelhash ## BITS ## _reset_curr_xof(hash); \
+  } \
+  \
+  static inline void parallelhash ## BITS ## _absorb(parallelhash_t * const hash, const uint8_t *msg, size_t msg_len) { \
+    while (msg_len > 0) { \
+      const size_t len = MIN(msg_len, hash->block_len - hash->ofs); \
+      (void) shake ## BITS ## _absorb(&(hash->curr_xof), msg, len); \
+      msg += len; \
+      msg_len -= len; \
+  \
+      hash->ofs += len; \
+      if (hash->ofs == hash->block_len) { \
+        /* emit block, reset curr xof */ \
+        parallelhash ## BITS ## _emit_block(hash); \
+        parallelhash ## BITS ## _reset_curr_xof(hash); \
+      } \
+    } \
+  } \
+  \
+  static inline void parallelhash ## BITS ## _squeeze(parallelhash_t * const hash, uint8_t * const dst, const size_t dst_len) { \
+    if (!hash->squeezing) { \
+      /* mark as squeezing */ \
+      hash->squeezing = true; \
+  \
+      if (hash->ofs > 0) { \
+        /* squeeze curr xof, absorb into root xof */ \
+        parallelhash ## BITS ## _emit_block(hash); \
+      } \
+  \
+      { \
+        /* build num blocks suffix */ \
+        uint8_t buf[9] = { 0 }; \
+        const size_t len = right_encode(buf, hash->num_blocks); \
+  \
+        /* absorb num blocks suffix into root xof */ \
+        (void) cshake ## BITS ## _xof_absorb(&(hash->root_xof), buf, len); \
+      } \
+  \
+      { \
+        /* build output size suffix */ \
+        uint8_t buf[9] = { 0 }; \
+        const size_t len = right_encode(buf, dst_len << 3); \
+  \
+        /* absorb output size suffix into root xof */ \
+        (void) cshake ## BITS ## _xof_absorb(&(hash->root_xof), buf, len); \
+      } \
+    } \
+  \
+    if (dst_len > 0) { \
+      cshake ## BITS ## _xof_squeeze(&(hash->root_xof), dst, dst_len); \
+    } \
+  } \
+  \
+  /* one-shot fixed-length parallelhash (non-xof) */ \
+  void parallelhash ## BITS (const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
+    /* init */ \
+    parallelhash_t hash; \
+    parallelhash ## BITS ## _init(&hash, params); \
+  \
+    /* absorb */ \
+    parallelhash ## BITS ## _absorb(&hash, src, src_len); \
+  \
+    /* squeeze */ \
+    parallelhash ## BITS ## _squeeze(&hash, dst, dst_len); \
+  } \
+  \
+  /* init parallelhash xof context */ \
+  void parallelhash ## BITS ## _xof_init(parallelhash_t *hash, const parallelhash_params_t params) { \
+    parallelhash ## BITS ## _init(hash, params); \
+  } \
+  \
+  /* absorb data into parallelhash xof context */ \
+  void parallelhash ## BITS ## _xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len) { \
+    parallelhash ## BITS ## _absorb(hash, msg, msg_len); \
+  } \
+  \
+  /* squeeze data from parallelhash xof context */ \
+  void parallelhash ## BITS ## _xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len) { \
+    if (!hash->squeezing) { \
+      /* emit zero length */ \
+      parallelhash ## BITS ## _squeeze(hash, dst, 0); \
+    } \
+  \
+    parallelhash ## BITS ## _squeeze(hash, dst, dst_len); \
+  } \
+  \
+  /* one-shot parallelhash-xof */ \
+  void parallelhash ## BITS ## _xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) { \
+    /* init */ \
+    parallelhash_t hash; \
+    parallelhash ## BITS ## _xof_init(&hash, params); \
+  \
+    /* absorb */ \
+    parallelhash ## BITS ## _xof_absorb(&hash, src, src_len); \
+  \
+    /* squeeze */ \
+    parallelhash ## BITS ## _xof_squeeze(&hash, dst, dst_len); \
   }
 
-  if (dst_len > 0) {
-    cshake256_xof_squeeze(&(hash->root_xof), dst, dst_len);
-  }
-}
-
-void parallelhash256(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  // init
-  parallelhash_t hash;
-  parallelhash256_init(&hash, params);
-
-  // absorb
-  parallelhash256_absorb(&hash, src, src_len);
-
-  // squeeze
-  parallelhash256_squeeze(&hash, dst, dst_len);
-}
-
-void parallelhash256_xof_init(parallelhash_t *hash, const parallelhash_params_t params) {
-  parallelhash256_init(hash, params);
-}
-
-void parallelhash256_xof_absorb(parallelhash_t *hash, const uint8_t *msg, const size_t msg_len) {
-  parallelhash256_absorb(hash, msg, msg_len);
-}
-
-void parallelhash256_xof_squeeze(parallelhash_t *hash, uint8_t *dst, const size_t dst_len) {
-  if (!hash->squeezing) {
-    // emit zero length
-    parallelhash256_squeeze(hash, dst, 0);
-  }
-
-  parallelhash256_squeeze(hash, dst, dst_len);
-}
-
-void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
-  // init
-  parallelhash_t hash;
-  parallelhash256_xof_init(&hash, params);
-
-  // absorb
-  parallelhash256_xof_absorb(&hash, src, src_len);
-
-  // squeeze
-  parallelhash256_xof_squeeze(&hash, dst, dst_len);
-}
+DEF_PARALLELHASH(128) // parallelhash128, parallehash128-xof
+DEF_PARALLELHASH(256) // parallelhash256, parallehash256-xof
 
 // number of rounds
 #define TURBOSHAKE_NUM_ROUNDS 12
