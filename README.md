@@ -18,10 +18,10 @@ The following algorithms are implemented:
 
 * SHA3-224, SHA3-256, SHA3-384, and SHA3-512: [SHA-3][] [cryptographic
   hash functions][hash], as defined in section 6.1 of [FIPS 202][].
+* SHAKE128 and SHAKE256: [XOFs][xof] as defined in section 6.2 of [FIPS 202][].
 * HMAC-SHA3-224, HMAC-SHA3-256, HMAC-SHA3-384, HMAC-SHA3-512:
   [HMAC][hmac] instantiated with [SHA-3][] hash functions, as specified
   in section 7 of [FIPS 202][], [RFC 2104][], and [FIPS 198-1][].
-* SHAKE128 and SHAKE256: [XOFs][xof] as defined in section 6.2 of [FIPS 202][].
 * cSHAKE128, cSHAKE128-XOF, cSHAKE256, and cSHAKE256-XOF: Fixed-length
   and [XOF][] variants of the customizable-SHAKE primitive, as defined
   in section 3 of [SP 800-185][800-185].
@@ -174,6 +174,9 @@ To use this library in your application:
 1. Copy `sha3.h` and `sha3.c` into your source tree.
 2. Update your build system to compile `sha3.o`.
 3. Include `sha3.h` in your application.
+
+See the top-level `Makefile` and the examples for recommended
+compiler flags.
 
 ## Documentation
 
