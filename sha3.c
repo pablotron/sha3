@@ -1765,6 +1765,14 @@ static void dump_state(FILE *f, const uint64_t a[static 25]) {
   dump_hex(f, (const uint8_t *) a, 25 * 8);
 }
 
+static void fail_test(const char * const func, const char * const name, const uint8_t * const got, const size_t got_len, const uint8_t * const exp, const size_t exp_len) {
+  fprintf(stderr, "%s(\"%s\") failed, got:\n", func, name);
+  dump_hex(stderr, got, got_len);
+
+  fprintf(stderr, "exp:\n");
+  dump_hex(stderr, exp, exp_len);
+}
+
 static void test_theta(void) {
   // src: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_Msg30.pdf
   uint64_t a[25] = { [0] = 0x00000001997b5853ULL, [16] = 0x8000000000000000ULL };
@@ -1979,11 +1987,7 @@ static void test_permute(void) {
 
   permute(a, SHA3_NUM_ROUNDS);
   if (memcmp(exp, a, sizeof(exp))) {
-    fprintf(stderr, "%s() failed, got:\n", __func__);
-    dump_hex(stderr, (uint8_t*) a, 32);
-
-    fprintf(stderr, "exp:\n");
-    dump_hex(stderr, (uint8_t*) exp, 32);
+    fail_test(__func__, "", (uint8_t*) a, 32, (uint8_t*) exp, 32);
   }
 }
 
@@ -2086,11 +2090,7 @@ static void test_sha3_224(void) {
     uint8_t got[28] = { 0 };
     sha3_224(tests[i].msg, tests[i].len, got);
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 28);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 28);
+      fail_test(__func__, tests[i].name, got, 28, tests[i].exp, 28);
     }
   }
 }
@@ -2194,11 +2194,7 @@ static void test_sha3_256(void) {
     uint8_t got[32] = { 0 };
     sha3_256(tests[i].msg, tests[i].len, got);
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -2316,11 +2312,7 @@ static void test_sha3_384(void) {
     uint8_t got[48] = { 0 };
     sha3_384(tests[i].msg, tests[i].len, got);
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 48);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 48);
+      fail_test(__func__, tests[i].name, got, 48, tests[i].exp, 48);
     }
   }
 }
@@ -2452,11 +2444,7 @@ static void test_sha3_512(void) {
     uint8_t got[64] = { 0 };
     sha3_512(tests[i].msg, tests[i].len, got);
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 64);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 64);
+      fail_test(__func__, tests[i].name, got, 64, tests[i].exp, 64);
     }
   }
 }
@@ -2576,11 +2564,7 @@ static void test_sha3_224_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, 28);
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 28);
+        fail_test(__func__, tests[i].name, got, 28, tests[i].exp, 28);
       }
     }
   }
@@ -2701,11 +2685,7 @@ static void test_sha3_256_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, 32);
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 32);
+        fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
       }
     }
   }
@@ -2840,11 +2820,7 @@ static void test_sha3_384_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, 48);
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 48);
+        fail_test(__func__, tests[i].name, got, 48, tests[i].exp, 48);
       }
     }
   }
@@ -2992,11 +2968,7 @@ static void test_sha3_512_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, 64);
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 64);
+        fail_test(__func__, tests[i].name, got, 64, tests[i].exp, 64);
       }
     }
   }
@@ -3104,11 +3076,12 @@ static void test_shake128_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\", %zu) failed, got:\n", __func__, tests[i].name, len);
-        dump_hex(stderr, got, 16);
+        // build test name
+        char name[64];
+        snprintf(name, sizeof(name), "%s (%zu)", tests[i].name, len);
 
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 16);
+        // fail test
+        fail_test(__func__, name, got, 16, tests[i].exp, 16);
       }
     }
   }
@@ -3203,11 +3176,12 @@ static void test_shake128(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\", %zu) failed, got:\n", __func__, tests[i].name, len);
-        dump_hex(stderr, got, 16);
+        // build test name
+        char name[64];
+        snprintf(name, sizeof(name), "%s (%zu)", tests[i].name, len);
 
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 16);
+        // fail test
+        fail_test(__func__, name, got, 16, tests[i].exp, 16);
       }
     }
   }
@@ -3329,11 +3303,12 @@ static void test_shake256_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\", %zu) failed, got:\n", __func__, tests[i].name, len);
-        dump_hex(stderr, got, 16);
+        // build test name
+        char name[64];
+        snprintf(name, sizeof(name), "%s (%zu)", tests[i].name, len);
 
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 16);
+        // fail test
+        fail_test(__func__, name, got, 16, tests[i].exp, 16);
       }
     }
   }
@@ -3442,11 +3417,12 @@ static void test_shake256(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\", %zu) failed, got:\n", __func__, tests[i].name, len);
-        dump_hex(stderr, got, 16);
+        // build test name
+        char name[64];
+        snprintf(name, sizeof(name), "%s (%zu)", tests[i].name, len);
 
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, 16);
+        // fail test
+        fail_test(__func__, name, got, 16, tests[i].exp, 16);
       }
     }
   }
@@ -3513,11 +3489,7 @@ static void test_left_encode(void) {
     if (got_len != tests[i].exp_len) {
       fprintf(stderr, "%s(\"%s\") length check failed: got %zu, exp %zu:\n", __func__, tests[i].name, got_len, tests[i].exp_len);
     } else if (memcmp(got, tests[i].exp, got_len)) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, got_len);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, got_len);
+      fail_test(__func__, tests[i].name, got, got_len, tests[i].exp, got_len);
     }
   }
 }
@@ -3583,11 +3555,7 @@ static void test_right_encode(void) {
     if (got_len != tests[i].exp_len) {
       fprintf(stderr, "%s(\"%s\") length check failed: got %zu, exp %zu:\n", __func__, tests[i].name, got_len, tests[i].exp_len);
     } else if (memcmp(got, tests[i].exp, got_len)) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, got_len);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, got_len);
+      fail_test(__func__, tests[i].name, got, got_len, tests[i].exp, got_len);
     }
   }
 }
@@ -3639,11 +3607,7 @@ static void test_encode_string_prefix(void) {
     if (got_len != tests[i].exp_len) {
       fprintf(stderr, "%s(\"%s\") length check failed: got %zu, exp %zu:\n", __func__, tests[i].name, got_len, tests[i].exp_len);
     } else if (memcmp(got, tests[i].exp, got_len)) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, got_len);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, got_len);
+      fail_test(__func__, tests[i].name, got, got_len, tests[i].exp, got_len);
     }
   }
 }
@@ -3698,11 +3662,7 @@ static void test_bytepad(void) {
     if (got.prefix_len != tests[i].exp_prefix_len || got.pad_len != tests[i].exp_pad_len) {
       fprintf(stderr, "%s(\"%s\") length check failed:\n  got: { %zu, %zu }\n  exp: { %zu, %zu }\n", __func__, tests[i].name, got.prefix_len, got.pad_len, tests[i].exp_prefix_len, tests[i].exp_pad_len);
     } else if (memcmp(got.prefix, tests[i].exp_prefix, got.prefix_len)) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got.prefix, got.prefix_len);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp_prefix, got.prefix_len);
+      fail_test(__func__, tests[i].name, got.prefix, got.prefix_len, tests[i].exp_prefix, got.prefix_len);
     }
   }
 }
@@ -3773,11 +3733,7 @@ static void test_cshake128(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].test_name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].test_name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -3856,11 +3812,7 @@ static void test_cshake256(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].test_name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].test_name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -3964,11 +3916,7 @@ static void test_kmac128(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4085,11 +4033,7 @@ static void test_kmac256(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4187,11 +4131,7 @@ static void test_kmac128_xof(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4309,11 +4249,7 @@ static void test_kmac256_xof(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4399,11 +4335,7 @@ static void test_tuplehash128(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4489,11 +4421,7 @@ static void test_tuplehash128_xof(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4585,11 +4513,7 @@ static void test_tuplehash256(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4681,11 +4605,7 @@ static void test_tuplehash256_xof(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4761,11 +4681,7 @@ static void test_parallelhash128(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4841,11 +4757,7 @@ static void test_parallelhash128_xof(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, 32);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, 32);
+      fail_test(__func__, tests[i].name, got, 32, tests[i].exp, 32);
     }
   }
 }
@@ -4927,11 +4839,7 @@ static void test_parallelhash256(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -5013,11 +4921,7 @@ static void test_parallelhash256_xof(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -5099,11 +5003,7 @@ static void test_hmac_sha3_224(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -5183,11 +5083,7 @@ static void test_hmac_sha3_256(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -5266,11 +5162,7 @@ static void test_hmac_sha3_384(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -5350,11 +5242,7 @@ static void test_hmac_sha3_512(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -5447,11 +5335,7 @@ static void test_hmac_sha3_224_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, sizeof(got));
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, sizeof(got));
+        fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
       }
     }
   }
@@ -5543,11 +5427,7 @@ static void test_hmac_sha3_256_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, sizeof(got));
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, sizeof(got));
+        fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
       }
     }
   }
@@ -5638,11 +5518,7 @@ static void test_hmac_sha3_384_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, sizeof(got));
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, sizeof(got));
+        fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
       }
     }
   }
@@ -5734,11 +5610,7 @@ static void test_hmac_sha3_512_ctx(void) {
 
       // check
       if (memcmp(got, tests[i].exp, sizeof(got))) {
-        fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-        dump_hex(stderr, got, sizeof(got));
-
-        fprintf(stderr, "exp:\n");
-        dump_hex(stderr, tests[i].exp, sizeof(got));
+        fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
       }
     }
   }
@@ -5870,11 +5742,7 @@ static void test_turboshake128(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -6015,11 +5883,7 @@ static void test_turboshake256(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
   }
 }
@@ -6090,11 +5954,7 @@ static void test_k12_length_encode(void) {
     if (got_len != tests[i].exp_len) {
       fprintf(stderr, "%s(\"%s\") length check failed: got %zu, exp %zu:\n", __func__, tests[i].name, got_len, tests[i].exp_len);
     } else if (memcmp(got, tests[i].exp, got_len)) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, got_len);
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, got_len);
+      fail_test(__func__, tests[i].name, got, got_len, tests[i].exp, got_len);
     }
   }
 }
@@ -6266,11 +6126,7 @@ static void test_k12(void) {
 
     // check
     if (memcmp(got, tests[i].exp, sizeof(got))) {
-      fprintf(stderr, "%s(\"%s\") failed, got:\n", __func__, tests[i].name);
-      dump_hex(stderr, got, sizeof(got));
-
-      fprintf(stderr, "exp:\n");
-      dump_hex(stderr, tests[i].exp, sizeof(got));
+      fail_test(__func__, tests[i].name, got, sizeof(got), tests[i].exp, sizeof(got));
     }
 
     // free test data
