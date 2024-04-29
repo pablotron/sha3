@@ -1,21 +1,21 @@
 # bench
 
-Benchmark hash and XOF speed and then print summary statistics to
-standard output in [CSV][] format and metadata to standard error.
+Benchmark [hash][] functions and [XOFs][xof], then print metadata to
+standard error and print a table of [median][] [cycles per byte (cpb)][]
+for each function and input message length to standard output in [CSV][]
+format.
 
 Requires [libcpucycles][].
 
 The columns of the [CSV][] printed to standard output are as follows:
 
 * `function`: Function name.
-* `dst`: Output length, in bytes.
-* `src`: Input length, in bytes.
-* `median_cpb`: [Median][] [cycles per byte][] (e.g. `median_cycles/src`).
-* `median_cycles`: [Median][] of observed CPU cycles.
-* `mean_cycles`: [Arithmetic mean][mean] of observed CPU cycles.
-* `stddev_cycles`: [Standard deviation][stddev] of observed CPU cycles.
-* `min_cycles`: Minimum observed CPU cycles.
-* `max_cycles`: Maximum observed CPU cycles.
+* `dst_len`: Output digest length, in bytes.
+* `64`: [Median][] [cycles per byte (cpb)][] for a 64 byte input message.
+* `256`: [Median][] [cycles per byte (cpb)][] for a 256 byte input message.
+* `1024`: [Median][] [cycles per byte (cpb)][] for a 1024 byte input message.
+* `4096`: [Median][] [cycles per byte (cpb)][] for a 4096 byte input message.
+* `16384`: [Median][] [cycles per byte (cpb)][] for a 16384 byte input message.
 
 The metadata printed to standard error is as follows:
 
@@ -23,6 +23,9 @@ The metadata printed to standard error is as follows:
 * `implementation`: [libcpucycles][] backend as reported by `cpucycles_implementation()`
 * `persecond`: CPU cycles per second, as reported by `cpucycles_persecond()`
 * `num_trials`: Number of trials.
+* `src_lens`: Comma-delimited list of input messages lengths, in bytes.
+* `dst_lens`: Comma-delimited list of output digest lengths, in bytes
+  (only used for [XOFs][]).
 
 ## Build
 
@@ -62,11 +65,15 @@ gcc (Debian 12.2.0-14) 12.2.0
 
 # benchmark with 100k trials
 > ./bench
-TODO...
-
-# benchmark with 1M trials
-> ./bench 1000000
-TODO...
+info: cpucycles: version=20240318 implementation=amd64-pmc persecond=4800000000
+info: num_trials=100000 src_lens=64,256,1024,4096,16384 dst_lens=32
+function,dst_len,64,256,1024,4096,16384
+sha3_224,28,15.4,7.8,7.8,7.1,7.0
+sha3_256,32,15.4,7.8,7.8,7.6,7.4
+sha3_384,48,15.5,11.7,9.8,9.8,9.7
+sha3_512,64,15.4,15.5,14.6,13.9,13.9
+shake128,32,15.5,7.8,6.9,6.2,6.1
+shake256,32,15.6,7.8,7.9,7.6,7.4
 ```
 
 ### Odroid N2L (Cortex-A73)
@@ -110,3 +117,7 @@ TODO...
   "AVX-512: 512-bit extensions to the Advanced Vector Extensions (AVX) instruction set."
 [cycles per byte]: https://en.wikipedia.org/wiki/Encryption_software#Performance
   "Observed CPU cycles divided by the number of input bytes."
+[xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+  "Extendable-Output Function (XOF)"
+[hash]: https://en.wikipedia.org/wiki/Cryptographic_hash_function
+  "Cryptographic hash function"
