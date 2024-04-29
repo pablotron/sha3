@@ -1489,6 +1489,16 @@ static void k12_xof_example(void) {
   ///! [k12_xof]
 }
 
+static void sha3_backend_example(void) {
+  ///! [sha3_backend]
+  // get backend name
+  const char *backend = sha3_backend();
+
+  // print backend name to stdout
+  printf("%s: backend=%s\n", __func__, backend);
+  ///! [sha3_backend]
+}
+
 int main(void) {
   sha3_224_example();
   sha3_224_absorb_example();
@@ -1543,6 +1553,7 @@ int main(void) {
   k12_once_example();
   k12_custom_once_example();
   k12_xof_example();
+  sha3_backend_example();
 
   return 0;
 }
