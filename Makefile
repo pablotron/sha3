@@ -10,7 +10,7 @@ LIB=libsha3.so
 LIB_OBJS=sha3.o
 
 # test app (test suite and sanitizers)
-TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -W -Wall -Wextra -Werror -pedantic -std=c11
+TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -W -Wall -Wextra -Werror -pedantic -std=c11 -march=native -mtune=native
 TEST_APP=./test-sha3
 
 .PHONY=test all
