@@ -91,8 +91,14 @@ gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 # benchmark with 100k trials
 > ./bench
 info: cpucycles: version=20240318 implementation=arm64-vct persecond=1800000000
-info: num_trials=100000
-TODO...
+info: num_trials=100000 src_lens=64,256,1024,4096,16384 dst_lens=32
+function,dst_len,64,256,1024,4096,16384
+sha3_224,28,32.8,15.8,15.2,13.7,13.5
+sha3_256,32,32.8,15.8,15.1,14.5,14.1
+sha3_384,48,32.8,22.9,18.7,18.5,18.2
+sha3_512,64,32.8,30.2,27.5,26.0,25.9
+shake128,32,32.8,15.8,13.4,11.9,11.6
+shake256,32,32.8,15.8,15.1,14.5,14.1
 ```
 
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
