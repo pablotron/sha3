@@ -77,27 +77,31 @@ static inline void theta(uint64_t a[static 25]) {
 
 // rho step of keccak permutation (scalar implementation)
 static inline void rho(uint64_t a[static 25]) {
-  a[1] = ROL(a[1], 1); // 1 % 64 = 1
-  a[2] = ROL(a[2], 62); // 190 % 64 = 62
-  a[3] = ROL(a[3], 28); // 28 % 64 = 28
-  a[4] = ROL(a[4], 27); // 91 % 64 = 27
-  a[5] = ROL(a[5], 36); // 36 % 64 = 36
-  a[6] = ROL(a[6], 44); // 300 % 64 = 44
-  a[7] = ROL(a[7], 6); // 6 % 64 = 6
-  a[8] = ROL(a[8], 55); // 55 % 64 = 55
-  a[9] = ROL(a[9], 20); // 276 % 64 = 20
-  a[10] = ROL(a[10], 3); // 3 % 64 = 3
+  a[ 1] = ROL(a[ 1],  1); // 1 % 64 = 1
+  a[ 2] = ROL(a[ 2], 62); // 190 % 64 = 62
+  a[ 3] = ROL(a[ 3], 28); // 28 % 64 = 28
+  a[ 4] = ROL(a[ 4], 27); // 91 % 64 = 27
+
+  a[ 5] = ROL(a[ 5], 36); // 36 % 64 = 36
+  a[ 6] = ROL(a[ 6], 44); // 300 % 64 = 44
+  a[ 7] = ROL(a[ 7],  6); // 6 % 64 = 6
+  a[ 8] = ROL(a[ 8], 55); // 55 % 64 = 55
+  a[ 9] = ROL(a[ 9], 20); // 276 % 64 = 20
+
+  a[10] = ROL(a[10],  3); // 3 % 64 = 3
   a[11] = ROL(a[11], 10); // 10 % 64 = 10
   a[12] = ROL(a[12], 43); // 171 % 64 = 43
   a[13] = ROL(a[13], 25); // 153 % 64 = 25
   a[14] = ROL(a[14], 39); // 231 % 64 = 39
+
   a[15] = ROL(a[15], 41); // 105 % 64 = 41
   a[16] = ROL(a[16], 45); // 45 % 64 = 45
   a[17] = ROL(a[17], 15); // 15 % 64 = 15
   a[18] = ROL(a[18], 21); // 21 % 64 = 21
-  a[19] = ROL(a[19], 8); // 136 % 64 = 8
+  a[19] = ROL(a[19],  8); // 136 % 64 = 8
+
   a[20] = ROL(a[20], 18); // 210 % 64 = 18
-  a[21] = ROL(a[21], 2); // 66 % 64 = 2
+  a[21] = ROL(a[21],  2); // 66 % 64 = 2
   a[22] = ROL(a[22], 61); // 253 % 64 = 61
   a[23] = ROL(a[23], 56); // 120 % 64 = 56
   a[24] = ROL(a[24], 14); // 78 % 64 = 14
@@ -105,28 +109,32 @@ static inline void rho(uint64_t a[static 25]) {
 
 // pi step of keccak permutation (scalar implementation)
 static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
-  dst[0] = src[0];
-  dst[1] = src[6];
-  dst[2] = src[12];
-  dst[3] = src[18];
-  dst[4] = src[24];
-  dst[5] = src[3];
-  dst[6] = src[9];
-  dst[7] = src[10];
-  dst[8] = src[16];
-  dst[9] = src[22];
-  dst[10] = src[1];
-  dst[11] = src[7];
+  dst[ 0] = src[ 0];
+  dst[ 1] = src[ 6];
+  dst[ 2] = src[12];
+  dst[ 3] = src[18];
+  dst[ 4] = src[24];
+
+  dst[ 5] = src[ 3];
+  dst[ 6] = src[ 9];
+  dst[ 7] = src[10];
+  dst[ 8] = src[16];
+  dst[ 9] = src[22];
+
+  dst[10] = src[ 1];
+  dst[11] = src[ 7];
   dst[12] = src[13];
   dst[13] = src[19];
   dst[14] = src[20];
-  dst[15] = src[4];
-  dst[16] = src[5];
+
+  dst[15] = src[ 4];
+  dst[16] = src[ 5];
   dst[17] = src[11];
   dst[18] = src[17];
   dst[19] = src[23];
-  dst[20] = src[2];
-  dst[21] = src[8];
+
+  dst[20] = src[ 2];
+  dst[21] = src[ 8];
   dst[22] = src[14];
   dst[23] = src[15];
   dst[24] = src[21];
@@ -134,26 +142,30 @@ static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
 
 // chi step of keccak permutation (scalar implementation)
 static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
-  dst[0] = src[0] ^ (~src[1] & src[2]);
-  dst[1] = src[1] ^ (~src[2] & src[3]);
-  dst[2] = src[2] ^ (~src[3] & src[4]);
-  dst[3] = src[3] ^ (~src[4] & src[0]);
-  dst[4] = src[4] ^ (~src[0] & src[1]);
-  dst[5] = src[5] ^ (~src[6] & src[7]);
-  dst[6] = src[6] ^ (~src[7] & src[8]);
-  dst[7] = src[7] ^ (~src[8] & src[9]);
-  dst[8] = src[8] ^ (~src[9] & src[5]);
-  dst[9] = src[9] ^ (~src[5] & src[6]);
+  dst[ 0] = src[ 0] ^ (~src[ 1] & src[ 2]);
+  dst[ 1] = src[ 1] ^ (~src[ 2] & src[ 3]);
+  dst[ 2] = src[ 2] ^ (~src[ 3] & src[ 4]);
+  dst[ 3] = src[ 3] ^ (~src[ 4] & src[ 0]);
+  dst[ 4] = src[ 4] ^ (~src[ 0] & src[ 1]);
+
+  dst[ 5] = src[ 5] ^ (~src[ 6] & src[ 7]);
+  dst[ 6] = src[ 6] ^ (~src[ 7] & src[ 8]);
+  dst[ 7] = src[ 7] ^ (~src[ 8] & src[ 9]);
+  dst[ 8] = src[ 8] ^ (~src[ 9] & src[ 5]);
+  dst[ 9] = src[ 9] ^ (~src[ 5] & src[ 6]);
+
   dst[10] = src[10] ^ (~src[11] & src[12]);
   dst[11] = src[11] ^ (~src[12] & src[13]);
   dst[12] = src[12] ^ (~src[13] & src[14]);
   dst[13] = src[13] ^ (~src[14] & src[10]);
   dst[14] = src[14] ^ (~src[10] & src[11]);
+
   dst[15] = src[15] ^ (~src[16] & src[17]);
   dst[16] = src[16] ^ (~src[17] & src[18]);
   dst[17] = src[17] ^ (~src[18] & src[19]);
   dst[18] = src[18] ^ (~src[19] & src[15]);
   dst[19] = src[19] ^ (~src[15] & src[16]);
+
   dst[20] = src[20] ^ (~src[21] & src[22]);
   dst[21] = src[21] ^ (~src[22] & src[23]);
   dst[22] = src[22] ^ (~src[23] & src[24]);
