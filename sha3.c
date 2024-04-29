@@ -25,6 +25,19 @@
 
 /** @cond INTERNAL */
 
+// available backends
+#define SHA3_BACKEND_AVX512 8
+#define SHA3_BACKEND_SCALAR 0
+
+// auto-detect backend if unspecified
+#ifndef SHA3_BACKEND
+#ifdef __AVX512F__
+#define SHA3_BACKEND SHA3_BACKEND_AVX512
+#else /* !__AVX512F__ */
+#define SHA3_BACKEND SHA3_BACKEND_SCALAR
+#endif /* __AVX512F__ */
+#endif /* SHA3_BACKEND */
+
 // 64-bit rotate left
 #define ROL(v, n) (((v) << (n)) | ((v) >> (64-(n))))
 
@@ -47,7 +60,7 @@ static const uint64_t RCS[] = {
   0x8000000080008081ULL, 0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL,
 };
 
-#if !defined(__AVX512F__) || defined(SHA3_TEST)
+#if (SHA3_BACKEND == SHA3_BACKEND_SCALAR) || defined(SHA3_TEST)
 // If AVX512 is supported and we are not building the test suite,
 // then do not compile the scalar step functions below.
 //
@@ -205,9 +218,9 @@ static inline void permute12_scalar(uint64_t a[static 25]) {
     iota(a, 12 + i);
   }
 }
-#endif /* !defined(__AVX512F__) || defined(SHA3_TEST) */
+#endif /* (SHA3_BACKEND == SHA3_BACKEND_SCALAR) || defined(SHA3_TEST) */
 
-#ifdef __AVX512F__
+#if SHA3_BACKEND == SHA3_BACKEND_AVX512
 #include <immintrin.h>
 
 // 24 round keccak permutation (avx512 implementation).
@@ -608,15 +621,17 @@ static inline void permute12_avx512(uint64_t s[static 25]) {
   _mm512_mask_storeu_epi64(s + 5 * 3, 0x1f, r3);
   _mm512_mask_storeu_epi64(s + 5 * 4, 0x1f, r4);
 }
-#endif /* __AVX512F__ */
+#endif /* SHA3_BACKEND == SHA3_BACKEND_AVX512 */
 
-#ifdef __AVX512F__
+#if SHA3_BACKEND == SHA3_BACKEND_AVX512
 #define permute permute_avx512
 #define permute12 permute12_avx512
-#else /* !__AVX512F__ */
+#elif SHA3_BACKEND == SHA3_BACKEND_SCALAR
 #define permute permute_scalar
 #define permute12 permute12_scalar
-#endif /* __AVX512F__ */
+#else
+#error "unknown sha3 backend"
+#endif /* SHA3_BACKEND */
 
 // absorb message into state, return updated byte count
 // used by `hash_absorb()`, `hash_once()`, and `xof_absorb_raw()`
@@ -2336,7 +2351,7 @@ static void test_permute_scalar(void) {
 }
 
 static void test_permute_avx512(void) {
-#ifdef __AVX512F__
+#ifdef SHA3_BACKEND == SHA3_BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -2348,7 +2363,7 @@ static void test_permute_avx512(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* __AVX512F__ */
+#endif /* SHA3_BACKEND == SHA3_BACKEND_AVX512 */
 }
 
 static const struct {
@@ -2376,7 +2391,7 @@ static void test_permute12_scalar(void) {
 }
 
 static void test_permute12_avx512(void) {
-#ifdef __AVX512F__
+#ifdef SHA3_BACKEND == SHA3_BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
@@ -2388,7 +2403,7 @@ static void test_permute12_avx512(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* __AVX512F__ */
+#endif /* SHA3_BACKEND == SHA3_BACKEND_AVX512 */
 }
 
 static void test_sha3_224(void) {
