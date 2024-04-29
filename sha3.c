@@ -2359,7 +2359,7 @@ static void test_permute_scalar(void) {
 }
 
 static void test_permute_avx512(void) {
-#ifdef SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == SHA3_BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -2399,7 +2399,7 @@ static void test_permute12_scalar(void) {
 }
 
 static void test_permute12_avx512(void) {
-#ifdef SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == SHA3_BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
