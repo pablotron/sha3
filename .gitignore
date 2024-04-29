@@ -3,6 +3,7 @@ sha3
 *.o
 libsha3.so
 html
+examples/06-all/all-fns
 tests/cavp-tests/cavp-tests
 tests/cavp-tests/zip-cache
 tests/bench/bench
