@@ -177,9 +177,7 @@ static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
 static inline void iota(uint64_t a[static 25], const int i) {
   a[0] ^= RCS[i];
 }
-#endif /* !defined(__AVX512F__) || defined(SHA3_TEST) */
 
-#ifndef __AVX512F__
 // 24-round keccak permutation (scalar implementation)
 static inline void permute_scalar(uint64_t a[static 25]) {
   uint64_t tmp[25] = { 0 };
@@ -204,16 +202,12 @@ static inline void permute12_scalar(uint64_t a[static 25]) {
     iota(a, 12 + i);
   }
 }
-#endif /* !__AVX512F__ */
+#endif /* !defined(__AVX512F__) || defined(SHA3_TEST) */
 
 #ifdef __AVX512F__
 #include <immintrin.h>
 
 // 24 round keccak permutation (avx512 implementation).
-//
-// copied from `permute_avx512_fast()` in `tests/permute/permute.c`. all
-// steps are inlined as blocks. ~3x faster than scalar implementation,
-// but could be sped up more.
 //
 // how it operates (roughly):
 //
