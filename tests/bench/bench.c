@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
   }
 
   // print metadata to stderr
-  fprintf(stderr,"info: cpucycles: version=%s implementation=%s persecond=%lld\ninfo: num_trials=%zu src_lens", cpucycles_version(), cpucycles_implementation(), cpucycles_persecond(), num_trials);
+  fprintf(stderr,"info: cpucycles: version=%s implementation=%s persecond=%lld\ninfo: backend=%s num_trials=%zu src_lens", cpucycles_version(), cpucycles_implementation(), cpucycles_persecond(), sha3_backend(), num_trials);
   for (size_t i = 0; i < NUM_SRC_LENS; i++) {
     fprintf(stderr, "%s%zu", (i > 0) ? "," : "=", SRC_LENS[i]);
   }

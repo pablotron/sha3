@@ -22,6 +22,7 @@ The metadata printed to standard error is as follows:
 * `version`: version of [libcpucycles][] as reported by `cpucycles_version()`
 * `implementation`: [libcpucycles][] backend as reported by `cpucycles_implementation()`
 * `persecond`: CPU cycles per second, as reported by `cpucycles_persecond()`
+* `backend`: Name of backend.  One of `avx512` or `scalar`.
 * `num_trials`: Number of trials.
 * `src_lens`: Comma-delimited list of input messages lengths, in bytes.
 * `dst_lens`: Comma-delimited list of output digest lengths, in bytes
@@ -66,7 +67,7 @@ gcc (Debian 12.2.0-14) 12.2.0
 # benchmark with 100k trials
 > ./bench
 info: cpucycles: version=20240318 implementation=amd64-pmc persecond=4800000000
-info: num_trials=100000 src_lens=64,256,1024,4096,16384 dst_lens=32
+info: backend=avx512 num_trials=100000 src_lens=64,256,1024,4096,16384 dst_lens=32
 function,dst_len,64,256,1024,4096,16384
 sha3_224,28,15.4,7.8,7.8,7.1,7.0
 sha3_256,32,15.4,7.8,7.8,7.6,7.4
@@ -91,7 +92,7 @@ gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 # benchmark with 100k trials
 > ./bench
 info: cpucycles: version=20240318 implementation=arm64-vct persecond=1800000000
-info: num_trials=100000 src_lens=64,256,1024,4096,16384 dst_lens=32
+info: backend=scalar num_trials=100000 src_lens=64,256,1024,4096,16384 dst_lens=32
 function,dst_len,64,256,1024,4096,16384
 sha3_224,28,32.8,15.8,15.2,13.7,13.5
 sha3_256,32,32.8,15.8,15.1,14.5,14.1
