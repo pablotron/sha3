@@ -751,7 +751,6 @@ static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const si
   return num_bytes;
 }
 
-
 // Get rate (number of bytes that can be absorbed before the internal
 // state is permuted).
 //
@@ -2092,6 +2091,15 @@ void k12_custom_once(const uint8_t *src, const size_t src_len, const uint8_t *cu
 // one-shot kangarootwelve w/o custom string
 void k12_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size_t dst_len) {
   k12_custom_once(src, src_len, NULL, 0, dst, dst_len);
+}
+
+// Return backend name.
+const char *sha3_backend(void) {
+#if SHA3_BACKEND == SHA3_BACKEND_AVX512
+  return "avx512";
+#elif SHA3_BACKEND == SHA3_BACKEND_SCALAR
+  return "scalar";
+#endif /* SHA3_BACKEND */
 }
 
 #ifdef SHA3_TEST

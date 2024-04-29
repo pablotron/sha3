@@ -2352,6 +2352,23 @@ void k12_init(k12_t *k12, const uint8_t *src, const size_t src_len, const uint8_
  */
 void k12_squeeze(k12_t *k12, uint8_t *dst, const size_t len);
 
+/**
+ * @defgroup misc Miscellaneous
+ * @brief Miscellaneous functions.
+ */
+
+/**
+ * @brief Get name of backend.
+ * @ingroup misc
+ *
+ * @note Returns a read-only string which much not be freed by the
+ * caller.
+ *
+ * Example:
+ * @snippet{trimleft} 06-all/all-fns.c sha3_backend
+ */
+const char *sha3_backend(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
