@@ -5,3 +5,5 @@ libsha3.so
 html
 tests/cavp-tests/cavp-tests
 tests/cavp-tests/zip-cache
+tests/bench/bench
+tests/bench/perf.data*
