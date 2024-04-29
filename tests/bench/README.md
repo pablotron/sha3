@@ -8,10 +8,9 @@ Requires [libcpucycles][].
 The columns of the [CSV][] printed to standard output are as follows:
 
 * `function`: Function name.
-* `dst`: Output size, in bytes.
-* `src`: Input size, in bytes.
-* `median_cpb`: [Median][] of observed CPU cycles divided by the input size.
-* `mean_cpb`: [Arithmetic mean][mean] of observed CPU cycles divided by the input size.
+* `dst`: Output length, in bytes.
+* `src`: Input length, in bytes.
+* `median_cpb`: [Median][] [cycles per byte][] (e.g. `median_cycles/src`).
 * `median_cycles`: [Median][] of observed CPU cycles.
 * `mean_cycles`: [Arithmetic mean][mean] of observed CPU cycles.
 * `stddev_cycles`: [Standard deviation][stddev] of observed CPU cycles.
@@ -109,3 +108,5 @@ TODO...
   "64-bit extension to the ARM instruction set."
 [avx-512]: https://en.wikipedia.org/wiki/AVX-512
   "AVX-512: 512-bit extensions to the Advanced Vector Extensions (AVX) instruction set."
+[cycles per byte]: https://en.wikipedia.org/wiki/Encryption_software#Performance
+  "Observed CPU cycles divided by the number of input bytes."
