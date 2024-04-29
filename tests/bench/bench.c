@@ -86,17 +86,17 @@ static stats_t get_stats(long long * const vals, const size_t num_vals) {
   static stats_t bench_ ## FN (const size_t num_trials, const size_t src_len, const size_t dst_len) { \
     /* allocate times, src, and dst buffers */ \
     long long *times = checked_calloc(__func__, num_trials, sizeof(long long)); \
-    uint8_t *src = checked_calloc(__func__, num_trials, src_len); \
+    uint8_t *src = checked_calloc(__func__, 1, src_len); \
     uint8_t *dst = checked_calloc(__func__, num_trials, dst_len); \
-    \
-    /* generate random source data */ \
-    rand_bytes(src, num_trials * src_len); \
     \
     /* run trials */ \
     for (size_t i = 0; i < num_trials; i++) { \
+      /* generate random source data */ \
+      rand_bytes(src, src_len); \
+      \
       /* call function */ \
       const long long t0 = cpucycles(); \
-      FN (src + (i * src_len), src_len, dst + (i * dst_len), dst_len); \
+      FN (src, src_len, dst + (i * dst_len), dst_len); \
       const long long t1 = cpucycles() - t0; \
       \
       /* save time */ \
@@ -107,8 +107,9 @@ static stats_t get_stats(long long * const vals, const size_t num_vals) {
     const stats_t stats = get_stats(times, num_trials); \
     \
     /* free buffers */ \
-    free(src); \
     free(times); \
+    free(src); \
+    free(dst); \
     \
     /* return summary stats */ \
     return stats; \
@@ -117,9 +118,10 @@ static stats_t get_stats(long long * const vals, const size_t num_vals) {
 // define hash benchmark function
 #define DEF_BENCH_HASH(FN, OUT_LEN) \
   static stats_t bench_ ## FN (const size_t num_trials, const size_t src_len) { \
-    /* allocate times and src buffers */ \
+    /* allocate times, src, and dst buffers */ \
     long long *times = checked_calloc(__func__, num_trials, sizeof(long long)); \
-    uint8_t *src = checked_calloc(__func__, src_len, 1); \
+    uint8_t *src = checked_calloc(__func__, 1, src_len); \
+    uint8_t *dst = checked_calloc(__func__, num_trials, OUT_LEN); \
     \
     /* run trials */ \
     for (size_t i = 0; i < num_trials; i++) { \
@@ -127,9 +129,8 @@ static stats_t get_stats(long long * const vals, const size_t num_vals) {
       rand_bytes(src, src_len); \
       \
       /* call function */ \
-      uint8_t dst[OUT_LEN] = { 0 }; \
       const long long t0 = cpucycles(); \
-      FN (src, src_len, dst); \
+      FN (src, src_len, dst + (i * OUT_LEN)); \
       const long long t1 = cpucycles() - t0; \
       \
       /* save time */ \
@@ -140,14 +141,15 @@ static stats_t get_stats(long long * const vals, const size_t num_vals) {
     const stats_t stats = get_stats(times, num_trials); \
     \
     /* free buffers */ \
-    free(src); \
     free(times); \
+    free(src); \
+    free(dst); \
     \
     /* return summary stats */ \
     return stats; \
   }
 
-// define xof benchmarks *()
+// define xof benchmarks
 DEF_BENCH_XOF(shake128)
 DEF_BENCH_XOF(shake256)
 
@@ -159,16 +161,17 @@ DEF_BENCH_HASH(sha3_512, 64)
 
 // print function stats to standard output as CSV row.
 static void print_row(const char *name, const size_t src_len, const size_t dst_len, stats_t fs) {
-    const double median_cpb = 1.0 * fs.median / src_len,
-                 mean_cpb = 1.0 * fs.mean / src_len;
-  printf("%s,%zu,%zu,%.0f,%.0f,%lld,%.0f,%.0f,%lld,%lld\n", name, dst_len, src_len, median_cpb, mean_cpb, fs.median, fs.mean, fs.stddev, fs.lo, fs.hi);
+  const double median_cpb = 1.0 * fs.median / src_len;
+  printf("%s,%zu,%zu,%.1f,%lld,%.0f,%.0f,%lld,%lld\n", name, dst_len, src_len, median_cpb, fs.median, fs.mean, fs.stddev, fs.lo, fs.hi);
 }
 
-#define MIN_SRC_LEN 64
-#define MAX_SRC_LEN 2048
+// input sizes (used for hashes and xofs)
+#define MIN_SRC_LEN (1<<6)  // minimum source length (inclusive)
+#define MAX_SRC_LEN (1<<14) // maximum source length (exclusive)
 
-#define MIN_DST_LEN 32
-#define MAX_DST_LEN 128
+// output sizes (used for xofs)
+#define MIN_DST_LEN (1<<5) // minimum source length (inclusive)
+#define MAX_DST_LEN (1<<7) // maximum source length (exclusive)
 
 int main(int argc, char *argv[]) {
   // get number of trials from first command-line argument, or fall back
@@ -183,7 +186,7 @@ int main(int argc, char *argv[]) {
   fprintf(stderr,"info: cpucycles: version=%s implementation=%s persecond=%lld\ninfo: num_trials=%zu\n", cpucycles_version(), cpucycles_implementation(), cpucycles_persecond(), num_trials);
 
   // print column headers to stdout
-  printf("function,dst,src,median_cpb,mean_cpb,median_cycles,mean_cycles,stddev_cycles,min_cycles,max_cycles\n");
+  printf("function,dst,src,median_cpb,median_cycles,mean_cycles,stddev_cycles,min_cycles,max_cycles\n");
 
   // sha3-224
   for (size_t src_len = MIN_SRC_LEN; src_len < MAX_SRC_LEN; src_len <<= 1) {
@@ -205,6 +208,7 @@ int main(int argc, char *argv[]) {
     print_row("sha3_512", src_len, 64, bench_sha3_512(num_trials, src_len));
   }
 
+  // test xofs
   for (size_t dst_len = MIN_DST_LEN; dst_len < MAX_DST_LEN; dst_len <<= 1) {
     // shake128
     for (size_t src_len = MIN_SRC_LEN; src_len < MAX_SRC_LEN; src_len <<= 1) {
