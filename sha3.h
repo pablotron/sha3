@@ -70,7 +70,7 @@ typedef struct {
   _Bool finalized; /**< mode (absorbing or finalized) */
 } sha3_t;
 
-/*!
+/**
  * @brief Calculate SHA3-224 hash of input data.
  * @ingroup sha3
  *
@@ -2273,7 +2273,7 @@ typedef struct {
   turboshake_t ts; /**< Internal turboshake context (private) */
 } k12_t;
 
-/**!
+/**
  * @brief Absorb data into KangarooTwelve, then squeeze bytes out.
  * @ingroup k12
  *
