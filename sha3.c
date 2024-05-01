@@ -26,15 +26,15 @@
 /** @cond INTERNAL */
 
 // available backends
-#define SHA3_BACKEND_AVX512 8
-#define SHA3_BACKEND_SCALAR 0
+#define BACKEND_AVX512 8 // avx512 backend
+#define BACKEND_SCALAR 0 // scalar (default) backend
 
-// auto-detect backend if unspecified
+// auto-detect backend
 #ifndef SHA3_BACKEND
 #ifdef __AVX512F__
-#define SHA3_BACKEND SHA3_BACKEND_AVX512
+#define SHA3_BACKEND BACKEND_AVX512
 #else /* !__AVX512F__ */
-#define SHA3_BACKEND SHA3_BACKEND_SCALAR
+#define SHA3_BACKEND BACKEND_SCALAR
 #endif /* __AVX512F__ */
 #endif /* SHA3_BACKEND */
 
@@ -50,7 +50,7 @@
 // align memory to N bytes
 #define ALIGN(N) __attribute__((aligned(N)))
 
-// round constants (used by iota)
+// Iota round constants.
 static const uint64_t RCS[] = {
   0x0000000000000001ULL, 0x0000000000008082ULL, 0x800000000000808aULL, 0x8000000080008000ULL,
   0x000000000000808bULL, 0x0000000080000001ULL, 0x8000000080008081ULL, 0x8000000000008009ULL,
@@ -60,13 +60,16 @@ static const uint64_t RCS[] = {
   0x8000000080008081ULL, 0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL,
 };
 
-#if (SHA3_BACKEND == SHA3_BACKEND_SCALAR) || defined(SHA3_TEST)
-// If AVX512 is supported and we are not building the test suite,
-// then do not compile the scalar step functions below.
+#if (SHA3_BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST)
+// If AVX-512 is supported and we are not building the test suite,
+// then do not compile the scalar step functions.
 //
-// (because they aren't used by the AVX512 implementation).
+// (because they aren't used by the AVX-512 implementation).
 
-// theta step of keccak permutation (scalar implementation)
+/**
+ * @brief Theta step of scalar Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void theta(uint64_t a[static 25]) {
   const uint64_t c[5] = {
     a[0] ^ a[5] ^ a[10] ^ a[15] ^ a[20],
@@ -91,7 +94,10 @@ static inline void theta(uint64_t a[static 25]) {
   a[20] ^= d[0]; a[21] ^= d[1]; a[22] ^= d[2]; a[23] ^= d[3]; a[24] ^= d[4];
 }
 
-// rho step of keccak permutation (scalar implementation)
+/**
+ * @brief Rho step of scalar Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void rho(uint64_t a[static 25]) {
   a[ 1] = ROL(a[ 1],  1); // 1 % 64 = 1
   a[ 2] = ROL(a[ 2], 62); // 190 % 64 = 62
@@ -123,7 +129,10 @@ static inline void rho(uint64_t a[static 25]) {
   a[24] = ROL(a[24], 14); // 78 % 64 = 14
 }
 
-// pi step of keccak permutation (scalar implementation)
+/**
+ * @brief Pi step of scalar Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
   dst[ 0] = src[ 0];
   dst[ 1] = src[ 6];
@@ -156,7 +165,10 @@ static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
   dst[24] = src[21];
 }
 
-// chi step of keccak permutation (scalar implementation)
+/**
+ * @brief Chi step of scalar Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
   dst[ 0] = src[ 0] ^ (~src[ 1] & src[ 2]);
   dst[ 1] = src[ 1] ^ (~src[ 2] & src[ 3]);
@@ -189,12 +201,26 @@ static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
   dst[24] = src[24] ^ (~src[20] & src[21]);
 }
 
-// iota step of keccak permutation (scalar implementation)
+/**
+ * @brief Iota step of scalar Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void iota(uint64_t a[static 25], const int i) {
   a[0] ^= RCS[i];
 }
 
-// keccak permutation (scalar implementation)
+/**
+ * @brief Scalar Keccak permutation.
+ *
+ * Apply `num_rounds` of Keccak permutation.  This function is only
+ * called by:
+ *
+ * - `permute_scalar()`: 24 rounds
+ * - `permute12_scalar()`: 12 rounds.  Used by TurboSHAKE and KangarooTwelve.
+ *
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ * @param[in] num_rounds Number of rounds (12 or 24).
+ */
 static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_rounds) {
   uint64_t tmp[25] = { 0 };
   for (size_t i = 0; i < num_rounds; i++) {
@@ -206,49 +232,64 @@ static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_roun
   }
 }
 
-// 24 round keccak permutation (scalar implementation)
+/**
+ * @brief 24 round scalar Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void permute_scalar(uint64_t a[static 25]) {
   permute_n_scalar(a, 24);
 }
 
-// 12 round keccak permutation (scalar implementation)
-// (only used by turboshake)
+/**
+ * @brief 12 round scalar Keccak permutation.
+ * @note Only used by TurboSHAKE and KangarooTwelve.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void permute12_scalar(uint64_t a[static 25]) {
   permute_n_scalar(a, 12);
 }
-#endif /* (SHA3_BACKEND == SHA3_BACKEND_SCALAR) || defined(SHA3_TEST) */
+#endif /* (SHA3_BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST) */
 
-#if SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == BACKEND_AVX512
 #include <immintrin.h>
 
-// keccak permutation (avx512 implementation).
-//
-// how it operates (roughly):
-//
-// 1. load rows from state `s` into the first 5 64-bit lanes of AVX-512
-// registers r0-r4, like so:
-//
-//   -----------------------------------------------------------------
-//   |     |                         Lanes                           |
-//   |-----|---------------------------------------------------------|
-//   | Reg |   0   |   1   |   2   |   3   |   4   |  5  |  6  |  7  |
-//   |-----|-------|-------|-------|-------|-------|-----|-----|-----|
-//   | r0  | s[ 0] | s[ 1] | s[ 2] | s[ 3] | s[ 4] | n/a | n/a | n/a |
-//   | r0  | s[ 0] | s[ 1] | s[ 2] | s[ 3] | s[ 4] | n/a | n/a | n/a |
-//   | r1  | s[ 5] | s[ 6] | s[ 7] | s[ 8] | s[ 9] | n/a | n/a | n/a |
-//   | r2  | s[10] | s[11] | s[12] | s[13] | s[14] | n/a | n/a | n/a |
-//   | r3  | s[15] | s[16] | s[17] | s[18] | s[19] | n/a | n/a | n/a |
-//   | r4  | s[20] | s[21] | s[22] | s[23] | s[24] | n/a | n/a | n/a |
-//   -----------------------------------------------------------------
-//
-// 2. For each round of 24 rounds:
-//   a. Perform theta, rho, pi, and chi steps.  pi, in particular, has
-//      a large number of permutation registers (so it may spill).
-//   b. Load round constant for current round and perform iota step.
-//
-// 3. store the rows first 5 64-bit lanes of registers r0-r4 back to the
-// state `s`.
-//
+/**
+ * @brief AVX-512 Keccak permutation.
+ *
+ * @param[in,out] s Keccak state (array of 25 64-bit integers).
+ * @param[in] num_rounds Number of rounds (12 or 24).
+ *
+ * Apply `num_rounds` of Keccak permutation.  This function is only
+ * called by:
+ *
+ * - `permute_avx512()`: 24 rounds.
+ * - `permute12_avx512()`: 12 rounds.  Used by TurboSHAKE and KangarooTwelve.
+ *
+ * How it works:
+ *
+ * 1. The Keccak state is loaded from `s` (an array of 25 64-bit
+ * unsigned integers) into the first 5 64-bit lanes of 5 AVX-512
+ * registers r0-r4, like this:
+ *
+ *   -----------------------------------------------------------------
+ *   |     |                  64-bit Lane                            |
+ *   |-----|---------------------------------------------------------|
+ *   | Reg |   0   |   1   |   2   |   3   |   4   |  5  |  6  |  7  |
+ *   |-----|-------|-------|-------|-------|-------|-----|-----|-----|
+ *   | r0  | s[ 0] | s[ 1] | s[ 2] | s[ 3] | s[ 4] | n/a | n/a | n/a |
+ *   | r1  | s[ 5] | s[ 6] | s[ 7] | s[ 8] | s[ 9] | n/a | n/a | n/a |
+ *   | r2  | s[10] | s[11] | s[12] | s[13] | s[14] | n/a | n/a | n/a |
+ *   | r3  | s[15] | s[16] | s[17] | s[18] | s[19] | n/a | n/a | n/a |
+ *   | r4  | s[20] | s[21] | s[22] | s[23] | s[24] | n/a | n/a | n/a |
+ *   -----------------------------------------------------------------
+ *
+ * 2. The Keccak permutation is applied `num_rounds` times, where
+ * `num_rounds` is either 12 for TurboSHAKE and KangarooTwelve or 24
+ * otherwise.
+ *
+ * 3. The permuted Keccak state is copied from the first 5 64-bit lanes
+ * of AVX-512 registers r0-r4 back to `s`.
+ */
 static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_rounds) {
   // load rows (r0-r4)
   __m512i r0 = _mm512_maskz_loadu_epi64(0x1f, s +  0), // row 0
@@ -257,7 +298,7 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
           r3 = _mm512_maskz_loadu_epi64(0x1f, s + 15), // row 3
           r4 = _mm512_maskz_loadu_epi64(0x1f, s + 20); // row 4
 
-  // 24 rounds
+  // loop over rounds
   for (size_t i = 0; i < num_rounds; i++) {
     // theta
     {
@@ -437,21 +478,30 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
   _mm512_mask_storeu_epi64(s + 5 * 4, 0x1f, r4);
 }
 
-// 24 round keccak permutation (avx512 implementation).
+/**
+ * @brief 24 round AVX-512 Keccak permutation.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void permute_avx512(uint64_t s[static 25]) {
   permute_n_avx512(s, 24);
 }
 
-// 12 round keccak permutation (avx512 implementation).
+/**
+ * @brief 12 round AVX-512 Keccak permutation.
+ * @note Only used by TurboSHAKE and KangarooTwelve.
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ */
 static inline void permute12_avx512(uint64_t s[static 25]) {
   permute_n_avx512(s, 12);
 }
-#endif /* SHA3_BACKEND == SHA3_BACKEND_AVX512 */
+#endif /* SHA3_BACKEND == BACKEND_AVX512 */
 
-#if SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == BACKEND_AVX512
+// use avx512 backend
 #define permute permute_avx512
 #define permute12 permute12_avx512
-#elif SHA3_BACKEND == SHA3_BACKEND_SCALAR
+#elif SHA3_BACKEND == BACKEND_SCALAR
+// use scalar backend
 #define permute permute_scalar
 #define permute12 permute12_scalar
 #else
@@ -576,29 +626,35 @@ static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const si
   return num_bytes;
 }
 
-// Get rate (number of bytes that can be absorbed before the internal
-// state is permuted).
+// Get the rate of a FIPS 202 hash function or extendable-output
+// function (XOF).
 //
-// For hash functions, the capacity is always 2 times the output length
-// of the hash, and the rate is the total state size (200 bytes) minus
-// the capacity (FIPS 202, Section 5.2).
+// The "rate" is the number of bytes that can be absorbed or squeezed
+// before the internal state is permuted.  It is calculated by the total
+// state size (200 bytes) minus the capacity (FIPS 202, Section 5.2).
 //
-// XOFs do not have fixed-length output, but the capacity is 2 times the
-// named strength, and the rate is the total state size (200 bytes)
-// minus the capacity.
+// The capacity and rate is determined as follows:
 //
-// The table below shows the output size, capacity, and rate for each
+// * Hash functions: The capacity is 2 times the length of the output
+//   digest.  For example, the length of a SHA3-256 digest is 32 bytes
+//   (256 bits), so the capacity is 64 bytes and the rate is 136 bytes
+//   (200-64 = 136).
+// * XOFs: The capacity is 2 times the named strength.  For example, the
+//   named strength of SHAKE128 is 16 bytes (128 bits), so the capacity
+//   is 32 bytes and the rate is 168 bytes (200-32 = 168).
+//
+// The table below shows the output size, rate, and capacity for each
 // FIPS 202 function.  All values are in bytes.
 //
 //   ---------------------------------------
-//   | Function | Output | Capacity | Rate |
-//   |----------|--------|----------|------|
-//   | SHA3-224 |     28 |       56 |  144 |
-//   | SHA3-256 |     32 |       64 |  136 |
-//   | SHA3-384 |     48 |       96 |  104 |
-//   | SHA3-512 |     64 |      136 |   72 |
-//   | SHAKE128 |    n/a |       32 |  168 |
-//   | SHAKE256 |    n/a |       64 |  136 |
+//   | Function | Output | Rate | Capacity |
+//   |----------|--------|------|----------|
+//   | SHA3-224 |     28 |  144 |       56 |
+//   | SHA3-256 |     32 |  136 |       64 |
+//   | SHA3-384 |     48 |  104 |       96 |
+//   | SHA3-512 |     64 |   72 |      128 |
+//   | SHAKE128 |    n/a |  168 |       32 |
+//   | SHAKE256 |    n/a |  136 |       64 |
 //   ---------------------------------------
 //
 #define RATE(len) (200 - 2 * (len))
@@ -1920,9 +1976,9 @@ void k12_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size
 
 // Return backend name.
 const char *sha3_backend(void) {
-#if SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == BACKEND_AVX512
   return "avx512";
-#elif SHA3_BACKEND == SHA3_BACKEND_SCALAR
+#elif SHA3_BACKEND == BACKEND_SCALAR
   return "scalar";
 #endif /* SHA3_BACKEND */
 }
@@ -2184,7 +2240,7 @@ static void test_permute_scalar(void) {
 }
 
 static void test_permute_avx512(void) {
-#if SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -2196,7 +2252,7 @@ static void test_permute_avx512(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == SHA3_BACKEND_AVX512 */
+#endif /* SHA3_BACKEND == BACKEND_AVX512 */
 }
 
 static const struct {
@@ -2224,7 +2280,7 @@ static void test_permute12_scalar(void) {
 }
 
 static void test_permute12_avx512(void) {
-#if SHA3_BACKEND == SHA3_BACKEND_AVX512
+#if SHA3_BACKEND == BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
@@ -2236,7 +2292,7 @@ static void test_permute12_avx512(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == SHA3_BACKEND_AVX512 */
+#endif /* SHA3_BACKEND == BACKEND_AVX512 */
 }
 
 static void test_sha3_224(void) {
