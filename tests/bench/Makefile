@@ -1,3 +1,4 @@
+# CFLAGS=-std=c11 -W -Wall -Wextra -Wpedantic -Werror -g -O3 -march=native -mtune=native -DSHA3_BACKEND=0
 CFLAGS=-std=c11 -W -Wall -Wextra -Wpedantic -Werror -g -O3 -march=native -mtune=native
 APP=./bench
 OBJS=sha3.o bench.o
