@@ -26,9 +26,9 @@
 /** @cond INTERNAL */
 
 // available backends
-#define BACKEND_AVX512 8    // AVX-512 backend
-#define BACKEND_NEON 4  // A64 Neon backend
-#define BACKEND_SCALAR 0    // scalar (default) backend
+#define BACKEND_AVX512 8  // AVX-512 backend
+#define BACKEND_NEON 4    // A64 Neon backend
+#define BACKEND_SCALAR 0  // scalar (default) backend
 
 // auto-detect backend
 #ifndef SHA3_BACKEND
@@ -477,51 +477,35 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 // 64-bit lane per row at the expense of making many of the instructions
 // simpler.
 typedef union {
-  // uint64_t u64[6];
   uint64x2x3_t u64x2x3;
-  // uint8_t u8[48];
-  // uint8x16_t u8x16[3];
-  uint8x16x3_t u8x16x3;
 } row_t;
 
-// TODO
-// add row_load_fast which reads 6 elems and does this
-// r2 = { .u64x2x3 = vld1q_u64_x3(a + 10) },
+// set contents of row
+static inline row_t row_set(const uint64x2_t a, const uint64x2_t b, const uint64x2_t c) {
+  return (row_t) { .u64x2x3 = { .val = { a, b, c } } };
+}
+
+// get Nth pair of u64s from row
+static inline uint64x2_t row_get(const row_t a, const size_t n) {
+  return a.u64x2x3.val[n];
+}
 
 // load row from array
 static inline row_t row_load(const uint64_t p[static 5]) {
-  row_t a = { 0 };
+  return row_set(vld1q_u64(p + 0), vld1q_u64(p + 2), vdupq_n_u64(p[4]));
+}
 
-  a.u64x2x3.val[0] = vld1q_u64(p + 0);
-  a.u64x2x3.val[1] = vld1q_u64(p + 2);
-  a.u64x2x3.val[2] = vdupq_n_u64(p[4]);
-
-  return a;
+// load row from array
+static inline row_t row_load_unsafe(const uint64_t p[static 6]) {
+  return (row_t) { .u64x2x3 = vld1q_u64_x3(p) };
 }
 
 // store row to array
 static inline void row_store(uint64_t p[static 5], const row_t a) {
-  // row_print(stderr, __func__, a);
-  vst1q_u64(p + 0, a.u64x2x3.val[0]);
-  vst1q_u64(p + 2, a.u64x2x3.val[1]);
-  vst1_u64(p + 4, vdup_laneq_u64(a.u64x2x3.val[2], 0));
-  // p[4] = vgetq_lane_u64(a.u64x2x3.val[2], 0);
+  const uint64x2x2_t vals = { .val = { row_get(a, 0), row_get(a, 1) } };
+  vst1q_u64_x2(p + 0, vals);
+  vst1_u64(p + 4, vdup_laneq_u64(row_get(a, 2), 0));
 }
-
-// low lane ids for rol_rc{l,r}()
-static const uint8x16_t ROW_RL_LO_IDS = {
-   8,  9, 10, 11, 12, 13, 14, 15,  99, 99, 99, 99, 99, 99, 99, 99,
-};
-
-// high lane ids for rol_rc{l,r}()
-static const uint8x16_t ROW_RL_HI_IDS = {
-  99, 99, 99, 99, 99, 99, 99, 99,   0,  1,  2,  3,  4,  5,  6,  7,
-};
-
-// low lanes for last iteration of row_rlll() and first iteration of row_rlr()
-static const uint8x16_t ROW_RL_TAIL_IDS = {
-   0,  1,  2,  3,  4,  5,  6,  7,  99, 99, 99, 99, 99, 99, 99, 99,
-};
 
 // rotate row lanes left
 //
@@ -534,14 +518,11 @@ static const uint8x16_t ROW_RL_TAIL_IDS = {
 // ---------------------------     ---------------------------
 //
 static inline row_t row_rll(const row_t a) {
-  row_t b = { 0 };
-  for (size_t i = 0; i < 3; i++) {
-    const uint8x16_t lo_ids = i ? ROW_RL_LO_IDS : ROW_RL_TAIL_IDS,
-                     hi = vqtbl1q_u8(a.u8x16x3.val[i], ROW_RL_HI_IDS),
-                     lo = vqtbl1q_u8(a.u8x16x3.val[(i + 2) % 3], lo_ids);
-    b.u8x16x3.val[i] = vorrq_u8(lo, hi);
-  }
-  return b;
+  return row_set(
+    vzip1q_u64(row_get(a, 2), row_get(a, 0)), // { a4, a0 }
+    vextq_u64(row_get(a, 0), row_get(a, 1), 1), // { a1, a2 }
+    vdupq_laneq_u64(row_get(a, 1), 1) // { a3, n/a }
+  );
 }
 
 // rotate row lanes right
@@ -554,189 +535,164 @@ static inline row_t row_rll(const row_t a) {
 // | A | B | C | D | E | n/a |     | B | C | D | E | A | n/a |
 // ---------------------------     ---------------------------
 //
-static row_t row_rlr(const row_t a) {
-  row_t b = { 0 };
-  for (size_t i = 0; i < 2; i++) {
-    const uint8x16_t lo = vqtbl1q_u8(a.u8x16x3.val[i], ROW_RL_LO_IDS),
-                     hi = vqtbl1q_u8(a.u8x16x3.val[(i + 1) % 3], ROW_RL_HI_IDS);
-    b.u8x16x3.val[i] = vorrq_u8(lo, hi);
-  }
-  b.u8x16x3.val[2] = vqtbl1q_u8(a.u8x16x3.val[0], ROW_RL_TAIL_IDS);
-  return b;
+static inline row_t row_rlr(const row_t a) {
+  return row_set(
+    vextq_u64(row_get(a, 0), row_get(a, 1), 1), // { a1, a2 }
+    vextq_u64(row_get(a, 1), row_get(a, 2), 1), // { a3, a4 }
+    row_get(a, 0) // { a0, n/a }
+  );
 }
 
 // c = a ^ b
 static inline row_t row_eor(const row_t a, const row_t b) {
-  row_t c = a;
-  for (size_t i = 0; i < 3; i++) {
-    c.u8x16x3.val[i] ^= b.u8x16x3.val[i];
-  }
-  return c;
+  return row_set(
+    row_get(a, 0) ^ row_get(b, 0),
+    row_get(a, 1) ^ row_get(b, 1),
+    row_get(a, 2) ^ row_get(b, 2)
+  );
+}
+
+// f = a ^ b ^ c ^ d ^ e
+// FIXME want: veor3_u64(a, b, c);
+static inline row_t row_eor5(const row_t a, const row_t b, const row_t c, const row_t d, const row_t e) {
+  return row_set(
+    row_get(a, 0) ^ row_get(b, 0) ^ row_get(c, 0) ^ row_get(d, 0) ^ row_get(e, 0),
+    row_get(a, 1) ^ row_get(b, 1) ^ row_get(c, 1) ^ row_get(d, 1) ^ row_get(e, 1),
+    row_get(a, 2) ^ row_get(b, 2) ^ row_get(c, 2) ^ row_get(d, 2) ^ row_get(e, 2)
+  );
 }
 
 // rotate bits in each lane left one bit
 static inline row_t row_rol1_u64(const row_t a) {
-  row_t b = { 0 };
-  for (size_t i = 0; i < 3; i++) {
-    b.u64x2x3.val[i] = VROLQ(a.u64x2x3.val[i], 1);
-  }
-  return b;
+  return row_set(
+    VROLQ(row_get(a, 0), 1),
+    VROLQ(row_get(a, 1), 1),
+    VROLQ(row_get(a, 2), 1)
+  );
 }
 
-// rotate bits in each lane left by amounts in vector
-static inline row_t row_rotn_u64(const row_t a, const int64_t v[static 5]) {
-  row_t b = { 0 };
-  static const int64x2_t k64 = { 64, 64 };
-  for (size_t i = 0; i < 3; i++) {
-    const int64x2_t hi_ids = (i < 2) ? vld1q_s64(v + 2 * i) : vdupq_n_s64(v[4]),
-                    lo_ids = vsubq_s64(hi_ids, k64);
-    b.u64x2x3.val[i] = vorrq_u64(vshlq_u64(a.u64x2x3.val[i], hi_ids), vshlq_u64(a.u64x2x3.val[i], lo_ids));
-  }
-  return b;
+// rho lane rotate values
+static const int64x2x3_t RHO_IDS[] = {
+  { .val = { {  0,  1 }, { 62, 28 }, { 27, 0 } } },
+  { .val = { { 36, 44 }, {  6, 55 }, { 20, 0 } } },
+  { .val = { {  3, 10 }, { 43, 25 }, { 39, 0 } } },
+  { .val = { { 41, 45 }, { 15, 21 }, {  8, 0 } } },
+  { .val = { { 18,  2 }, { 61, 56 }, { 14, 0 } } },
+};
+
+// apply rho rotation to row
+static inline row_t row_rho(const row_t a, const size_t id) {
+  const int64x2x3_t v = RHO_IDS[id];
+  return row_set(
+    vorrq_u64(vshlq_u64(row_get(a, 0), v.val[0]), vshlq_u64(row_get(a, 0), v.val[0] - 64)),
+    vorrq_u64(vshlq_u64(row_get(a, 1), v.val[1]), vshlq_u64(row_get(a, 1), v.val[1] - 64)),
+    vorrq_u64(vshlq_u64(row_get(a, 2), v.val[2]), vshlq_u64(row_get(a, 2), v.val[2] - 64))
+  );
 }
 
-// return logical NOT of row
-static inline row_t row_not(const row_t a) {
-  row_t b;
-  for (size_t i = 0; i < 3; i++) {
-    b.u8x16x3.val[i] = vmvnq_u8(a.u8x16x3.val[i]);
-  }
-  return b;
-}
-
-// return logical OR NOT of rows
-static inline row_t row_orn(const row_t a, const row_t b) {
-  row_t c;
-  for (size_t i = 0; i < 3; i++) {
-    c.u8x16x3.val[i] = vornq_u8(a.u8x16x3.val[i], b.u8x16x3.val[i]);
-  }
-  return c;
+// c = (~a & b)
+// note: was using ~(a | ~b) = (~a & b) (demorgan's laws), but changed
+// to BIC b, a instead (b & ~a)
+static inline row_t row_andn(const row_t a, const row_t b) {
+  return row_set(
+    vbicq_u64(row_get(b, 0), row_get(a, 0)),
+    vbicq_u64(row_get(b, 1), row_get(a, 1)),
+    vbicq_u64(row_get(b, 2), row_get(a, 2))
+  );
 }
 
 // apply chi permutation to entire row
 // note: ~(a | ~b) = (~a & b) (demorgan's laws)
 static inline row_t row_chi(const row_t a) {
-  const row_t b = row_rlr(a),
-              c = row_rlr(b); // fixme, permute would be faster
-  return row_eor(a, row_not(row_orn(b, c)));
+  return row_eor(a, row_andn(row_rlr(a), row_set(
+    row_get(a, 1),                            // { a2, a3 }
+    vtrn1q_u64(row_get(a, 2), row_get(a, 0)), // { a4, a0 }
+    vdupq_laneq_u64(row_get(a, 0), 1)         // { a1, n/a }
+  )));
 }
 
-// rho lane rotate values
-static const int64_t RHO_IDS[25] = {
-   0,  1, 62, 28, 27,
-  36, 44,  6, 55, 20,
-   3, 10, 43, 25, 39,
-  41, 45, 15, 21,  8,
-  18,  2, 61, 56, 14,
-};
-
-// permute IDS to take low lane of first pair and hi lane of second pair
-// a = [ a0, a1 ], b = [ b0, b1 ] => c = [ a0, b1 ]
-static const uint8x16_t PI_LO_HI_IDS = {
-   0,  1,  2,  3,  4,  5,  6,  7,  24, 25, 26, 27, 28, 29, 30, 31,
-};
-
-// permute IDS to take high lane of first pair and low lane of second pair
-// a = [ a0, a1 ], b = [ b0, b1 ] => c = [ a1, b0 ]
-static const uint8x16_t PI_HI_LO_IDS = {
-   8,  9, 10, 11, 12, 13, 14, 15,  16, 17, 18, 19, 20, 21, 22, 23,
-};
-
-static inline uint8x16_t pi_tbl(const uint8x16_t a, const uint8x16_t b, const uint8x16_t ids) {
-  uint8x16x2_t quad = { .val = { a, b } };
-  return vqtbl2q_u8(quad, ids);
+// return new vector with low lane of first argument and high lane of
+// second argument
+static inline uint64x2_t pi_lo_hi(const uint64x2_t a, const uint64x2_t b) {
+  // was using vqtbl2q_u8() with tables, but this is faster
+  const uint64x2_t c = vextq_u64(b, a, 1);
+  return vextq_u64(c, c, 1);
 }
 
-// 24-round neon keccak permutation with inlined steps
-void permute_n_neon(uint64_t a[static 25], const size_t num_rounds) {
+// neon keccak permutation with inlined steps
+static inline void permute_n_neon(uint64_t a[static 25], const size_t num_rounds) {
   // load rows
-  row_t r0 = row_load(a +  0),
-        r1 = row_load(a +  5),
-        r2 = row_load(a + 10),
-        r3 = row_load(a + 15),
-        r4 = row_load(a + 20);
+  row_t r0, r1, r2, r3, r4;
+  {
+    // 3 loads of 8 and 1 load of 1 cell (3*8 + 1 = 25)
+    const uint64x2x4_t m0 = vld1q_u64_x4(a +  0), // r0 cols 0-4, r1 cols 0-2
+                       m1 = vld1q_u64_x4(a +  8), // r1 cols 3-4, r2 cols 0-4, r3 col 1
+                       m2 = vld1q_u64_x4(a + 16); // r3 cols 1-4, r4 cols 0-3
+    const uint64x2_t m3 = vld1q_dup_u64(a + 24);  // r4 col 4
+
+    // permute loaded data into rows
+    r0 = row_set(m0.val[0], m0.val[1], m0.val[2]);
+    r1 = row_set(vextq_u64(m0.val[2], m0.val[3], 1), vextq_u64(m0.val[3], m1.val[0], 1), vextq_u64(m1.val[0], m1.val[0], 1));
+    r2 = row_set(m1.val[1], m1.val[2], m1.val[3]);
+    r3 = row_set(vextq_u64(m1.val[3], m2.val[0], 1), vextq_u64(m2.val[0], m2.val[1], 1), vextq_u64(m2.val[1], m2.val[1], 1));
+    r4 = row_set(m2.val[2], m2.val[3], m3);
+  }
 
   // loop for num rounds
   for (size_t i = 0; i < num_rounds; i++) {
     // theta
     {
-      // c = r0 ^ r1 ^ r2 ^ r3 ^ r4
-      const row_t c = row_eor(row_eor(row_eor(r0, r1), row_eor(r2, r3)), r4);
+      // c = r0 ^ r1 ^ r2 ^ r3 ^ r4, d = rll(c) ^ (rlr(c) << 1)
+      const row_t c = row_eor5(r0, r1, r2, r3, r4),
+                  d = row_eor(row_rll(c), row_rol1_u64(row_rlr(c)));
 
-      // calculate d...
-      const row_t d = row_eor(row_rll(c), row_rol1_u64(row_rlr(c)));
-
-      r0 = row_eor(r0, d);
-      r1 = row_eor(r1, d);
-      r2 = row_eor(r2, d);
-      r3 = row_eor(r3, d);
-      r4 = row_eor(r4, d);
+      r0 = row_eor(r0, d); // r0 ^= d
+      r1 = row_eor(r1, d); // r1 ^= d
+      r2 = row_eor(r2, d); // r2 ^= d
+      r3 = row_eor(r3, d); // r3 ^= d
+      r4 = row_eor(r4, d); // r4 ^= d
     }
 
     // rho
-    {
-      r0 = row_rotn_u64(r0, RHO_IDS +  0);
-      r1 = row_rotn_u64(r1, RHO_IDS +  5);
-      r2 = row_rotn_u64(r2, RHO_IDS + 10);
-      r3 = row_rotn_u64(r3, RHO_IDS + 15);
-      r4 = row_rotn_u64(r4, RHO_IDS + 20);
-    }
+    r0 = row_rho(r0, 0);
+    r1 = row_rho(r1, 1);
+    r2 = row_rho(r2, 2);
+    r3 = row_rho(r3, 3);
+    r4 = row_rho(r4, 4);
 
     // pi
     {
-      row_t t0 = { 0 };
-      {
-        // dst[ 0] = src[ 0]; dst[ 1] = src[ 6];
-        t0.u8x16x3.val[0] = pi_tbl(r0.u8x16x3.val[0], r1.u8x16x3.val[0], PI_LO_HI_IDS);
-        // dst[ 2] = src[12]; dst[ 3] = src[18];
-        t0.u8x16x3.val[1] = pi_tbl(r2.u8x16x3.val[1], r3.u8x16x3.val[1], PI_LO_HI_IDS);
-        // dst[ 4] = src[24];
-        t0.u8x16x3.val[2] = r4.u8x16x3.val[2];
-      }
+      const row_t t0 = row_set(
+        pi_lo_hi(row_get(r0, 0), row_get(r1, 0)),
+        pi_lo_hi(row_get(r2, 1), row_get(r3, 1)),
+        row_get(r4, 2)
+      );
 
-      row_t t1 = { 0 };
-      {
+      const row_t t1 = row_set(
+        vextq_u64(row_get(r0, 1), row_get(r1, 2), 1),
+        pi_lo_hi(row_get(r2, 0), row_get(r3, 0)),
+        row_get(r4, 1)
+      );
 
-        // dst[ 5] = src[ 3]; dst[ 6] = src[ 9];
-        t1.u8x16x3.val[0] = pi_tbl(r0.u8x16x3.val[1], r1.u8x16x3.val[2], PI_HI_LO_IDS);
-        // dst[ 7] = src[10]; dst[ 8] = src[16];
-        t1.u8x16x3.val[1] = pi_tbl(r2.u8x16x3.val[0], r3.u8x16x3.val[0], PI_LO_HI_IDS);
-        // dst[ 9] = src[22];
-        t1.u8x16x3.val[2] = r4.u8x16x3.val[1];
-      }
+      const row_t t2 = row_set(
+        vextq_u64(row_get(r0, 0), row_get(r1, 1), 1),
+        vextq_u64(row_get(r2, 1), row_get(r3, 2), 1),
+        row_get(r4, 0)
+      );
 
-      row_t t2 = { 0 };
-      {
-        // dst[10] = src[ 1]; dst[11] = src[ 7];
-        t2.u8x16x3.val[0] = pi_tbl(r0.u8x16x3.val[0], r1.u8x16x3.val[1], PI_HI_LO_IDS);
-        // dst[12] = src[13]; dst[13] = src[19];
-        t2.u8x16x3.val[1] = pi_tbl(r2.u8x16x3.val[1], r3.u8x16x3.val[2], PI_HI_LO_IDS);
-        // dst[14] = src[20];
-        t2.u8x16x3.val[2] = r4.u8x16x3.val[0];
-      }
+      const row_t t3 = row_set(
+        vtrn1q_u64(row_get(r0, 2), row_get(r1, 0)),
+        vextq_u64(row_get(r2, 0), row_get(r3, 1), 1),
+        vdupq_laneq_u64(row_get(r4, 1), 1)
+      );
 
-      row_t t3 = { 0 };
-      {
-        // dst[15] = src[ 4]; dst[16] = src[ 5];
-        // t3.u8x16x3.val[0] = pi_tbl(r0.u8x16x3.val[2], r1.u8x16x3.val[0], PI_LO_LO_IDS);
-        t3.u64x2x3.val[0] = vtrn1q_u64(r0.u64x2x3.val[2], r1.u64x2x3.val[0]);
-        // dst[17] = src[11]; dst[18] = src[17];
-        t3.u8x16x3.val[1] = pi_tbl(r2.u8x16x3.val[0], r3.u8x16x3.val[1], PI_HI_LO_IDS);
-        // dst[19] = src[23];
-        t3.u8x16x3.val[2] = pi_tbl(r4.u8x16x3.val[1], r4.u8x16x3.val[1], PI_HI_LO_IDS);
-      }
+      const row_t t4 = row_set(
+        pi_lo_hi(row_get(r0, 1), row_get(r1, 1)),
+        vtrn1q_u64(row_get(r2, 2), row_get(r3, 0)),
+        vdupq_laneq_u64(row_get(r4, 0), 1)
+      );
 
-      row_t t4 = { 0 };
-      {
-        // dst[20] = src[ 2]; dst[21] = src[ 8];
-        t4.u8x16x3.val[0] = pi_tbl(r0.u8x16x3.val[1], r1.u8x16x3.val[1], PI_LO_HI_IDS);
-        // dst[22] = src[14]; dst[23] = src[15];
-        // t4.u8x16x3.val[1] = pi_tbl(r2.u8x16x3.val[2], r3.u8x16x3.val[0], PI_LO_LO_IDS);
-        t4.u64x2x3.val[1] = vtrn1q_u64(r2.u64x2x3.val[2], r3.u64x2x3.val[0]);
-        // dst[24] = src[21];
-        t4.u8x16x3.val[2] = pi_tbl(r4.u8x16x3.val[0], r4.u8x16x3.val[0], PI_HI_LO_IDS);
-      }
-
+      // store rows
       r0 = t0;
       r1 = t1;
       r2 = t2;
@@ -752,16 +708,45 @@ void permute_n_neon(uint64_t a[static 25], const size_t num_rounds) {
     r4 = row_chi(r4);
 
     // iota
-    const uint64x2_t rc = { RCS[i], 0 };
+    const uint64x2_t rc = { RCS[24 - num_rounds + i], 0 };
     r0.u64x2x3.val[0] ^= rc;
   }
 
   // store rows
-  row_store(a +  0, r0);
-  row_store(a +  5, r1);
-  row_store(a + 10, r2);
-  row_store(a + 15, r3);
-  row_store(a + 20, r4);
+  {
+    // store columns 0-4 of r0 and columns 0-2 of r1
+    vst1q_u64_x4(a + 0, (uint64x2x4_t) {
+      .val = {
+        row_get(r0, 0),
+        row_get(r0, 1),
+        vtrn1q_u64(row_get(r0, 2), row_get(r1, 0)),
+        vextq_u64(row_get(r1, 0), row_get(r1, 1), 1)
+      },
+    });
+
+    // store columns 3-4 of r1, columns 0-4 of r2, and column 0 of r3
+    vst1q_u64_x4(a + 8, (uint64x2x4_t) {
+      .val = {
+        vextq_u64(row_get(r1, 1), row_get(r1, 2), 1),
+        row_get(r2, 0),
+        row_get(r2, 1),
+        vtrn1q_u64(row_get(r2, 2), row_get(r3, 0)),
+      },
+    });
+
+    // store columns 1-4 of r3 and columns 03 of r4
+    vst1q_u64_x4(a + 16, (uint64x2x4_t) {
+      .val = {
+        vextq_u64(row_get(r3, 0), row_get(r3, 1), 1),
+        vextq_u64(row_get(r3, 1), row_get(r3, 2), 1),
+        row_get(r4, 0),
+        row_get(r4, 1),
+      },
+    });
+
+    // store column 4 of r4
+    vst1_u64(a + 24, vdup_laneq_u64(row_get(r4, 2), 0));
+  }
 }
 #endif /* SHA3_BACKEND == BACKEND_NEON */
 
@@ -2541,6 +2526,22 @@ static void test_permute_avx512(void) {
 #endif /* SHA3_BACKEND == BACKEND_AVX512 */
 }
 
+static void test_permute_neon(void) {
+#if SHA3_BACKEND == BACKEND_NEON
+  for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_TESTS[i].exp_len;
+
+    uint64_t got[25] = { 0 };
+    memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
+    permute_n_neon(got, 24); // call permute_n_avx512() directly
+
+    if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
+    }
+  }
+#endif /* SHA3_BACKEND == BACKEND_NEON */
+}
+
 static const struct {
   uint64_t a[25]; // input state
   const uint64_t exp[25]; // expected value
@@ -2579,6 +2580,22 @@ static void test_permute12_avx512(void) {
     }
   }
 #endif /* SHA3_BACKEND == BACKEND_AVX512 */
+}
+
+static void test_permute12_neon(void) {
+#if SHA3_BACKEND == BACKEND_NEON
+  for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
+
+    uint64_t got[25] = { 0 };
+    memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
+    permute_n_neon(got, 12); // call permute_n_avx512() directly
+
+    if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
+    }
+  }
+#endif /* SHA3_BACKEND == BACKEND_NEON */
 }
 
 static void test_sha3_224(void) {
@@ -6735,8 +6752,10 @@ int main(void) {
   test_iota();
   test_permute_scalar();
   test_permute_avx512();
+  test_permute_neon();
   test_permute12_scalar();
   test_permute12_avx512();
+  test_permute12_neon();
   test_sha3_224();
   test_sha3_256();
   test_sha3_384();
