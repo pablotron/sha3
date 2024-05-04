@@ -621,6 +621,15 @@ static inline row_t row_chi(const row_t a) {
   return row_eor(a, row_not(row_orn(b, c)));
 }
 
+// rho lane rotate values
+static const int64_t RHO_IDS[25] = {
+   0,  1, 62, 28, 27,
+  36, 44,  6, 55, 20,
+   3, 10, 43, 25, 39,
+  41, 45, 15, 21,  8,
+  18,  2, 61, 56, 14,
+};
+
 // permute IDS to take low lane of first pair and hi lane of second pair
 // a = [ a0, a1 ], b = [ b0, b1 ] => c = [ a0, b1 ]
 static const uint8x16_t PI_LO_HI_IDS = {
