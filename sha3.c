@@ -26,20 +26,28 @@
 /** @cond INTERNAL */
 
 // available backends
-#define BACKEND_AVX512 8  // AVX-512 backend
-#define BACKEND_NEON 4    // A64 Neon backend
-#define BACKEND_SCALAR 0  // scalar (default) backend
+#define BACKEND_AUTO 0        // auto-detect (default)
+#define BACKEND_SCALAR 1      // scalar backend
+#define BACKEND_AVX512 2      // AVX-512 backend
+#define BACKEND_NEON 3        // Neon backend
 
-// auto-detect backend
+// if SHA3_BACKEND is defined and set to 0 (the default), then unset it
+// and auto-detect the appropriate backend
+#if defined(SHA3_BACKEND) && SHA3_BACKEND == BACKEND_AUTO
+#undef SHA3_BACKEND
+#endif /* defined(SHA3_BACKEND) && SHA3_BACKEND == 0 */
+
+// detect backend
 #ifndef SHA3_BACKEND
 #if defined(__AVX512F__)
 #define SHA3_BACKEND BACKEND_AVX512
 #elif defined(__ARM_NEON)
 #define SHA3_BACKEND BACKEND_NEON
 #else
+// no optimized backend detected, fall back to scalar
 #define SHA3_BACKEND BACKEND_SCALAR
 #endif
-#endif /* SHA3_BACKEND */
+#endif /* !SHA3_BACKEND */
 
 // 64-bit rotate left
 #define ROL(v, n) (((v) << (n)) | ((v) >> (64-(n))))
