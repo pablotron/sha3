@@ -910,8 +910,8 @@ static inline uint64x2_t pi_lo_hi(const uint64x2_t a, const uint64x2_t b) {
   return vextq_u64(c, c, 1);
 }
 
-// neon keccak permutation with inlined steps
-static inline void permute_n_neon(uint64_t a[static 25], const size_t num_rounds) {
+// diet-neon keccak permutation with inlined steps
+static inline void permute_n_diet_neon(uint64_t a[static 25], const size_t num_rounds) {
   // load rows
   row_t r0, r1, r2, r3, r4;
   {
