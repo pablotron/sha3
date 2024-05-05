@@ -1,3 +1,4 @@
+*.sw?
 test-sha3
 sha3
 *.o
