@@ -2533,7 +2533,7 @@ static void test_permute_neon(void) {
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
-    permute_n_neon(got, 24); // call permute_n_avx512() directly
+    permute_n_neon(got, 24); // call permute_n_neon() directly
 
     if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
@@ -2589,7 +2589,7 @@ static void test_permute12_neon(void) {
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
-    permute_n_neon(got, 12); // call permute_n_avx512() directly
+    permute_n_neon(got, 12); // call permute_n_neon() directly
 
     if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
