@@ -485,18 +485,13 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 // columns are stored in the low 5 64-bit lanes.  this wastes one
 // 64-bit lane per row at the expense of making many of the instructions
 // simpler.
-typedef union {
+typedef struct {
   uint64x2_t p0, p1, p2;
 } row_t;
 
 // set contents of row
 static inline row_t row_set(const uint64x2_t a, const uint64x2_t b, const uint64x2_t c) {
-  row_t r;
-  r.p0 = a;
-  r.p1 = b;
-  r.p2 = c;
-
-  return r;
+  return (row_t) { a, b, c };
 }
 
 // get Nth pair of u64s from row
