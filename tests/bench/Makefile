@@ -7,6 +7,9 @@ OBJS=sha3.o bench.o
 
 .PHONY=all test clean
 
+test: all
+	$(APP)
+
 all: $(APP)
 
 $(APP): $(OBJS)
