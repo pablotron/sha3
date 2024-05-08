@@ -73,7 +73,7 @@ static const uint64_t RCS[] = {
   0x8000000080008081ULL, 0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL,
 };
 
-#if (BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST)
+#if (BACKEND == BACKEND_SCALAR) || defined(TEST_SHA3)
 // If AVX-512 is supported and we are not building the test suite,
 // then do not compile the scalar step functions.
 //
@@ -240,7 +240,7 @@ static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_roun
     iota(a, (SHA3_NUM_ROUNDS - num_rounds + i));
   }
 }
-#endif /* (BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST) */
+#endif /* (BACKEND == BACKEND_SCALAR) || defined(TEST_SHA3) */
 
 #if BACKEND == BACKEND_AVX512
 #include <immintrin.h>
@@ -2733,7 +2733,7 @@ const char *sha3_backend(void) {
 #endif /* BACKEND */
 }
 
-#ifdef SHA3_TEST
+#ifdef TEST_SHA3
 #include <stdio.h> // printf()
 #include <stdlib.h> // malloc() (used in test_kangarootwelve())
 
@@ -7348,6 +7348,6 @@ int main(void) {
   printf("ok (%s)\n", sha3_backend());
 }
 
-#endif /* SHA3_TEST */
+#endif /* TEST_SHA3 */
 
 /** @endcond INTERNAL */

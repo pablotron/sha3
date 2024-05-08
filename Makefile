@@ -33,7 +33,7 @@ $(LIB): $(LIB_OBJS)
 
 # build and run test suite with sanitizers
 test:
-	$(CC) -o $(TEST_APP) $(TEST_CFLAGS) -DSHA3_TEST sha3.c && $(TEST_APP)
+	$(CC) -o $(TEST_APP) $(TEST_CFLAGS) -DTEST_SHA3 sha3.c && $(TEST_APP)
 
 # build API documentation (requires doxygen)
 doc:
