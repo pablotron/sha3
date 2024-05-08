@@ -29,7 +29,7 @@
 #define BACKEND_AUTO 0        // auto-detect (default)
 #define BACKEND_SCALAR 1      // scalar backend
 #define BACKEND_AVX512 2      // AVX-512 backend
-#define BACKEND_NEON 3        // Neon backend
+#define BACKEND_NEON 3        // Neon backend (experimental)
 #define BACKEND_DIET_NEON 4   // Neon backend which uses fewer registers
 
 // if SHA3_BACKEND is defined and set to 0 (the default), then unset it
@@ -42,7 +42,7 @@
 #ifndef SHA3_BACKEND
 #if defined(__AVX512F__)
 #define SHA3_BACKEND BACKEND_AVX512
-#elif defined(__ARM_NEON)
+#elif 0 && defined(__ARM_NEON)
 #define SHA3_BACKEND BACKEND_NEON
 #else
 // no optimized backend detected, fall back to scalar
