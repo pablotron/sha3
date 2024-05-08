@@ -29,9 +29,9 @@
 #define BACKEND_AUTO 0        // auto-detect (default)
 #define BACKEND_SCALAR 1      // scalar backend
 #define BACKEND_AVX512 2      // AVX-512 backend
-#define BACKEND_NEON 3        // Neon backend (experimental)
-#define BACKEND_DIET_NEON 4   // Neon backend which uses fewer registers
-#define BACKEND_HYBRID_NEON 5 // Hybrid neon backend
+#define BACKEND_NEON 3        // Neon backend.  Slower than scalar.
+#define BACKEND_DIET_NEON 4   // Neon backend, fewer registers.  Slower than scalar.
+#define BACKEND_HYBRID 5      // Hybrid scalar/neon backend.  Slower than scalar.
 
 // if BACKEND is defined and set to 0 (the default), then unset it
 // and auto-detect the appropriate backend
@@ -1062,22 +1062,18 @@ static inline void permute_n_diet_neon(uint64_t a[static 25], const size_t num_r
 }
 #endif /* BACKEND == BACKEND_DIET_NEON */
 
-#if (BACKEND == BACKEND_HYBRID_NEON)
+#if (BACKEND == BACKEND_HYBRID)
 #include <arm_neon.h>
 
 /**
- * @brief Scalar Keccak permutation.
+ * @brief Hybrid scalar/neon Keccak permutation.
  *
- * Apply `num_rounds` of Keccak permutation.  This function is only
- * called by:
- *
- * - `permute_scalar()`: 24 rounds
- * - `permute12_scalar()`: 12 rounds.  Used by TurboSHAKE and KangarooTwelve.
+ * Apply `num_rounds` of Keccak permutation.
  *
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
  * @param[in] num_rounds Number of rounds (12 or 24).
  */
-static inline void permute_n_hybrid_neon(uint64_t a[static 25], const size_t num_rounds) {
+static inline void permute_n_hybrid(uint64_t a[static 25], const size_t num_rounds) {
   uint64_t tmp[25] = { 0 };
   for (size_t i = SHA3_NUM_ROUNDS - num_rounds; i < SHA3_NUM_ROUNDS; i++) {
     // theta
@@ -1233,7 +1229,7 @@ static inline void permute_n_hybrid_neon(uint64_t a[static 25], const size_t num
     a[0] ^= RCS[i];
   }
 }
-#endif /* (BACKEND == BACKEND_HYBRID_NEON) */
+#endif /* (BACKEND == BACKEND_HYBRID) */
 
 #if BACKEND == BACKEND_AVX512
 #define permute_n permute_n_avx512 // use avx512 backend
@@ -1241,8 +1237,8 @@ static inline void permute_n_hybrid_neon(uint64_t a[static 25], const size_t num
 #define permute_n permute_n_neon // use neon backend
 #elif BACKEND == BACKEND_DIET_NEON
 #define permute_n permute_n_diet_neon // use diet-neon backend
-#elif BACKEND == BACKEND_HYBRID_NEON
-#define permute_n permute_n_hybrid_neon // use hybrid-neon backend
+#elif BACKEND == BACKEND_HYBRID
+#define permute_n permute_n_hybrid // use hybrid backend
 #elif BACKEND == BACKEND_SCALAR
 #define permute_n permute_n_scalar // use scalar backend
 #else
@@ -2740,8 +2736,8 @@ const char *sha3_backend(void) {
   return "neon";
 #elif BACKEND == BACKEND_DIET_NEON
   return "diet-neon";
-#elif BACKEND == BACKEND_HYBRID_NEON
-  return "hybrid-neon";
+#elif BACKEND == BACKEND_HYBRID
+  return "hybrid";
 #elif BACKEND == BACKEND_SCALAR
   return "scalar";
 #endif /* BACKEND */
@@ -2995,7 +2991,7 @@ static void test_permute_scalar(void) {
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
-    permute_n_scalar(got, 24); // call permute_n_scalar() directly
+    permute_n_scalar(got, 24); // call permute_n() directly
 
     if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
@@ -3010,7 +3006,7 @@ static void test_permute_avx512(void) {
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
-    permute_n_avx512(got, 24); // call permute_n_avx512() directly
+    permute_n_avx512(got, 24); // call permute_n() directly
 
     if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
@@ -3026,7 +3022,7 @@ static void test_permute_neon(void) {
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
-    permute_n_neon(got, 24); // call permute_n_neon() directly
+    permute_n_neon(got, 24); // call permute_n() directly
 
     if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
@@ -3042,7 +3038,7 @@ static void test_permute_diet_neon(void) {
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
-    permute_n_diet_neon(got, 24); // call permute_n_diet_neon() directly
+    permute_n_diet_neon(got, 24); // call permute_n() directly
 
     if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
@@ -3051,20 +3047,20 @@ static void test_permute_diet_neon(void) {
 #endif /* BACKEND == BACKEND_DIET_NEON */
 }
 
-static void test_permute_hybrid_neon(void) {
-#if BACKEND == BACKEND_HYBRID_NEON
+static void test_permute_hybrid(void) {
+#if BACKEND == BACKEND_HYBRID
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
-    permute_n_hybrid_neon(got, 24); // call permute_n_diet_neon() directly
+    permute_n_hybrid(got, 24); // call permute_n() directly
 
     if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* BACKEND == BACKEND_HYBRID_NEON */
+#endif /* BACKEND == BACKEND_HYBRID */
 }
 
 static const struct {
@@ -3139,20 +3135,20 @@ static void test_permute12_diet_neon(void) {
 #endif /* BACKEND == BACKEND_DIET_NEON */
 }
 
-static void test_permute12_hybrid_neon(void) {
-#if BACKEND == BACKEND_HYBRID_NEON
+static void test_permute12_hybrid(void) {
+#if BACKEND == BACKEND_HYBRID
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
     memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
-    permute_n_hybrid_neon(got, 12); // call permute_n() directly
+    permute_n_hybrid(got, 12); // call permute_n() directly
 
     if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* BACKEND == BACKEND_HYBRID_NEON */
+#endif /* BACKEND == BACKEND_HYBRID */
 }
 
 static void test_sha3_224(void) {
@@ -7311,12 +7307,12 @@ int main(void) {
   test_permute_avx512();
   test_permute_neon();
   test_permute_diet_neon();
-  test_permute_hybrid_neon();
+  test_permute_hybrid();
   test_permute12_scalar();
   test_permute12_avx512();
   test_permute12_neon();
   test_permute12_diet_neon();
-  test_permute12_hybrid_neon();
+  test_permute12_hybrid();
   test_sha3_224();
   test_sha3_256();
   test_sha3_384();
