@@ -1,10 +1,13 @@
 APP=neon
-CFLAGS=-std=c11 -O2 -W -Wall -Wextra -pedantic -march=native -mtune=native
+CFLAGS=-std=c11 -O2 -W -Wall -Wextra -Werror -pedantic -march=native -mtune=native
 OBJS=neon.o
 
-.PHONY=all clean
+.PHONY=all clean test
 
 all: $(APP)
+
+test: all
+	./neon
 
 $(APP): $(OBJS)
 	$(CC) $(CFLAGS) -o $(APP) $(OBJS)
