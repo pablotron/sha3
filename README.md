@@ -350,3 +350,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   "Microlibrary for counting CPU cycles."
 [cpb]: https://en.wikipedia.org/wiki/Encryption_software#Performance
   "Observed CPU cycles divided by the number of input bytes."
+[median]: https://en.wikipedia.org/wiki/Median
+  "Median"
