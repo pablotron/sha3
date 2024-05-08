@@ -34,12 +34,12 @@
 #define BACKEND_HYBRID 5      // Hybrid scalar/neon backend.  Slower than scalar.
 
 // if BACKEND is defined and set to 0 (the default), then unset it
-// and auto-detect the appropriate backend
+// and auto-detect the appropriate backend below
 #if defined(BACKEND) && BACKEND == BACKEND_AUTO
 #undef BACKEND
 #endif /* defined(BACKEND) && BACKEND == 0 */
 
-// detect backend
+// auto-detect backend
 #ifndef BACKEND
 #if defined(__AVX512F__)
 #define BACKEND BACKEND_AVX512
@@ -74,14 +74,21 @@ static const uint64_t RCS[] = {
 };
 
 #if (BACKEND == BACKEND_SCALAR) || defined(TEST_SHA3)
-// If AVX-512 is supported and we are not building the test suite,
-// then do not compile the scalar step functions.
+// The scalar Keccak step functions in this block are only built if one
+// of the following conditions is true:
 //
-// (because they aren't used by the AVX-512 implementation).
+// * we are using the scalar backend, or
+// * we are building the test suite.
+//
+// The scalar Keccak step functions in this block are not built for
+// AVX-512 and Neon backends, because those backends do not use them.
 
 /**
  * @brief Theta step of scalar Keccak permutation.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ *
+ * @note Only built when using the scalar backend or when building the
+ * test suite.
  */
 static inline void theta(uint64_t a[static 25]) {
   const uint64_t c[5] = {
@@ -110,6 +117,9 @@ static inline void theta(uint64_t a[static 25]) {
 /**
  * @brief Rho step of scalar Keccak permutation.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ *
+ * @note Only built when using the scalar backend or when building the
+ * test suite.
  */
 static inline void rho(uint64_t a[static 25]) {
   a[ 1] = ROL(a[ 1],  1); // 1 % 64 = 1
@@ -145,6 +155,9 @@ static inline void rho(uint64_t a[static 25]) {
 /**
  * @brief Pi step of scalar Keccak permutation.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ *
+ * @note Only built when using the scalar backend or when building the
+ * test suite.
  */
 static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
   dst[ 0] = src[ 0];
@@ -181,6 +194,9 @@ static inline void pi(uint64_t dst[static 25], const uint64_t src[static 25]) {
 /**
  * @brief Chi step of scalar Keccak permutation.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ *
+ * @note Only built when using the scalar backend or when building the
+ * test suite.
  */
 static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
   dst[ 0] = src[ 0] ^ (~src[ 1] & src[ 2]);
@@ -217,6 +233,9 @@ static inline void chi(uint64_t dst[static 25], const uint64_t src[static 25]) {
 /**
  * @brief Iota step of scalar Keccak permutation.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ *
+ * @note Only built when using the scalar backend or when building the
+ * test suite.
  */
 static inline void iota(uint64_t a[static 25], const int i) {
   a[0] ^= RCS[i];
@@ -229,6 +248,9 @@ static inline void iota(uint64_t a[static 25], const int i) {
  *
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
  * @param[in] num_rounds Number of rounds (12 or 24).
+ *
+ * @note Only built when using the scalar backend or when building the
+ * test suite.
  */
 static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_rounds) {
   uint64_t tmp[25] = { 0 };
@@ -469,7 +491,6 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 #include <arm_neon.h>
 
 // rotate elements in uint64x2_t left by N bits
-// vrax1q_u64() not supported on pizza
 #define VROLQ(A, N) vsriq_n_u64(vshlq_n_u64((A), (N)), (A), 64-(N))
 
 // keccak row, represented as 3 128-bit vector registers
@@ -478,10 +499,20 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 // 64-bit lane per row at the expense of making many of the instructions
 // simpler.
 typedef struct {
-  uint64x2_t p0, p1, p2;
+  uint64x2_t p0, // columns 0 and 1
+             p1, // columns 2 and 3
+             p2; // column 4.  high lane is unused
 } row_t;
 
-// set contents of row
+/**
+ * @brief Set row contents.
+ *
+ * Apply `num_rounds` of Keccak permutation.
+ *
+ * @param[in] p0 Value of columns 0 and 1.
+ * @param[in] p1 Value of columns 2 and 3.
+ * @param[in] p2 Value of columns 4 in low lane.  High lane is unused.
+ */
 static inline row_t row_set(const uint64x2_t a, const uint64x2_t b, const uint64x2_t c) {
   return (row_t) { a, b, c };
 }
@@ -489,18 +520,20 @@ static inline row_t row_set(const uint64x2_t a, const uint64x2_t b, const uint64
 // get Nth pair of u64s from row
 #define ROW_GET(A, N) ((A).p ## N)
 
-// load row from array
+/**
+ * @brief Load row from memory.
+ * @param[in] p Pointer to 40 bytes of memory.
+ * @return row_t
+ */
 static inline row_t row_load(const uint64_t p[static 5]) {
   return row_set(vld1q_u64(p + 0), vld1q_u64(p + 2), vdupq_n_u64(p[4]));
 }
 
-// load row from array
-static inline row_t row_load_unsafe(const uint64_t p[static 6]) {
-  const uint64x2x3_t d = vld1q_u64_x3(p);
-  return row_set(d.val[0], d.val[1], d.val[2]);
-}
-
-// store row to array
+/**
+ * @brief Store row to memory.
+ * @param[in] p Pointer to 40 bytes of memory.
+ * @param[in] a Row to store.
+ */
 static inline void row_store(uint64_t p[static 5], const row_t a) {
   const uint64x2x2_t vals = { .val = { ROW_GET(a, 0), ROW_GET(a, 1) } };
   vst1q_u64_x2(p + 0, vals);
@@ -563,6 +596,7 @@ static inline row_t row_eor5(const row_t a, const row_t b, const row_t c, const 
 }
 
 // rotate bits in each lane left one bit
+// FIXME: want vrax1q_u64() (not supported on n2l or pi5)
 static inline row_t row_rol1_u64(const row_t a) {
   return row_set(
     VROLQ(ROW_GET(a, 0), 1),
