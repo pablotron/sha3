@@ -22,7 +22,7 @@
 #include "rand-bytes.h" // rand_bytes()
 
 // default number of trials
-#define NUM_TRIALS 100000
+#define NUM_TRIALS 2000
 
 // input sizes (used for hashes and xofs)
 static const size_t SRC_LENS[] = { 64, 256, 1024, 4096, 16384 };
