@@ -225,11 +225,7 @@ static inline void iota(uint64_t a[static 25], const int i) {
 /**
  * @brief Scalar Keccak permutation.
  *
- * Apply `num_rounds` of Keccak permutation.  This function is only
- * called by:
- *
- * - `permute_scalar()`: 24 rounds
- * - `permute12_scalar()`: 12 rounds.  Used by TurboSHAKE and KangarooTwelve.
+ * Apply `num_rounds` of Keccak permutation.
  *
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
  * @param[in] num_rounds Number of rounds (12 or 24).
@@ -254,12 +250,6 @@ static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_roun
  *
  * @param[in,out] s Keccak state (array of 25 64-bit integers).
  * @param[in] num_rounds Number of rounds (12 or 24).
- *
- * Apply `num_rounds` of Keccak permutation.  This function is only
- * called by:
- *
- * - `permute_avx512()`: 24 rounds.
- * - `permute12_avx512()`: 12 rounds.  Used by TurboSHAKE and KangarooTwelve.
  *
  * How it works:
  *
@@ -1249,7 +1239,7 @@ static inline void permute_n_hybrid(uint64_t a[static 25], const size_t num_roun
  * @brief 24 round Keccak permutation.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
  */
-static inline void permute(uint64_t s[static 25]) {
+static inline void permute_24(uint64_t s[static 25]) {
   permute_n(s, 24);
 }
 
@@ -1258,7 +1248,7 @@ static inline void permute(uint64_t s[static 25]) {
  * @note Only used by TurboSHAKE and KangarooTwelve.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
  */
-static inline void permute12(uint64_t s[static 25]) {
+static inline void permute_12(uint64_t s[static 25]) {
   permute_n(s, 12);
 }
 
@@ -1282,7 +1272,7 @@ static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size
 
       if (num_bytes == rate) {
         // permute state
-        permute(a->u64);
+        permute_24(a->u64);
         num_bytes = 0;
       }
     }
@@ -1299,7 +1289,7 @@ static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size
 
       if (num_bytes == rate) {
         // permute state
-        permute(a->u64);
+        permute_24(a->u64);
         num_bytes = 0;
       }
     }
@@ -1312,7 +1302,7 @@ static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size
 
     if (num_bytes == rate) {
       // permute state
-      permute(a->u64);
+      permute_24(a->u64);
       num_bytes = 0;
     }
   }
@@ -1341,7 +1331,7 @@ static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const si
 
       if (num_bytes == rate) {
         // permute state
-        permute12(a->u64);
+        permute_12(a->u64);
         num_bytes = 0;
       }
     }
@@ -1358,7 +1348,7 @@ static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const si
 
       if (num_bytes == rate) {
         // permute state
-        permute12(a->u64);
+        permute_12(a->u64);
         num_bytes = 0;
       }
     }
@@ -1371,7 +1361,7 @@ static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const si
 
     if (num_bytes == rate) {
       // permute state
-      permute12(a->u64);
+      permute_12(a->u64);
       num_bytes = 0;
     }
   }
@@ -1427,7 +1417,7 @@ static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst
   a.u8[RATE(dst_len)-1] ^= 0x80;
 
   // final permutation
-  permute(a.u64);
+  permute_24(a.u64);
 
   // copy to destination
   memcpy(dst, a.u8, dst_len);
@@ -1466,7 +1456,7 @@ static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * 
     hash->a.u8[rate - 1] ^= 0x80;
 
     // permute
-    permute(hash->a.u64);
+    permute_24(hash->a.u64);
   }
 
   // copy to destination
@@ -1537,7 +1527,7 @@ static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, co
   xof->a.u8[rate - 1] ^= 0x80;
 
   // permute
-  permute(xof->a.u64);
+  permute_24(xof->a.u64);
 
   // switch to squeeze mode
   xof->num_bytes = 0;
@@ -1554,7 +1544,7 @@ static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, ui
     // rate-sized chunks to destination
     while (dst_len >= rate) {
       memcpy(dst, xof->a.u8, rate); // copy rate-sized chunk
-      permute(xof->a.u64); // permute state
+      permute_24(xof->a.u64); // permute state
 
       // update destination pointer and length
       dst += rate;
@@ -1578,7 +1568,7 @@ static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, ui
       dst[i] = xof->a.u8[xof->num_bytes++]; // squeeze byte to destination
 
       if (xof->num_bytes == rate) {
-        permute(xof->a.u64); // permute state
+        permute_24(xof->a.u64); // permute state
         xof->num_bytes = 0; // clear read bytes count
       }
     }
@@ -1646,7 +1636,7 @@ static inline void xof12_absorb_done(sha3_xof_t * const xof, const size_t rate, 
   xof->a.u8[rate - 1] ^= 0x80;
 
   // permute
-  permute12(xof->a.u64);
+  permute_12(xof->a.u64);
 
   // switch to squeeze mode
   xof->num_bytes = 0;
@@ -1663,7 +1653,7 @@ static inline void xof12_squeeze_raw(sha3_xof_t * const xof, const size_t rate, 
     // rate-sized chunks to destination
     while (dst_len >= rate) {
       memcpy(dst, xof->a.u8, rate); // copy rate-sized chunk
-      permute12(xof->a.u64); // permute state
+      permute_12(xof->a.u64); // permute state
 
       // update destination pointer and length
       dst += rate;
@@ -1687,7 +1677,7 @@ static inline void xof12_squeeze_raw(sha3_xof_t * const xof, const size_t rate, 
       dst[i] = xof->a.u8[xof->num_bytes++]; // squeeze byte to destination
 
       if (xof->num_bytes == rate) {
-        permute12(xof->a.u64); // permute state
+        permute_12(xof->a.u64); // permute state
         xof->num_bytes = 0; // clear read bytes count
       }
     }
@@ -2979,85 +2969,85 @@ static const struct {
   uint64_t a[25]; // input state
   const uint64_t exp[25]; // expected value
   const size_t exp_len; // length of exp, in bytes
-} PERMUTE_TESTS[] = {{
+} PERMUTE_24_TESTS[] = {{
   .a = { [0] = 0x00000001997b5853ULL, [16] = 0x8000000000000000ULL },
   .exp = { 0xE95A9E40EF2F24C8ULL, 0x24C64DAE57C8F1D1ULL, 0x8CAA629F80192BB9ULL, 0xD0B178A0541C4107ULL },
   .exp_len = 32,
 }};
 
-static void test_permute_scalar(void) {
-  for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE_TESTS[i].exp_len;
+static void test_permute_24_scalar(void) {
+  for (size_t i = 0; i < sizeof(PERMUTE_24_TESTS) / sizeof(PERMUTE_24_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_24_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_24_TESTS[i].a, sizeof(got));
     permute_n_scalar(got, 24); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_24_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_24_TESTS[i].exp, exp_len);
     }
   }
 }
 
-static void test_permute_avx512(void) {
+static void test_permute_24_avx512(void) {
 #if BACKEND == BACKEND_AVX512
-  for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_24_TESTS) / sizeof(PERMUTE_24_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_24_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_24_TESTS[i].a, sizeof(got));
     permute_n_avx512(got, 24); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_24_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_24_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_AVX512 */
 }
 
-static void test_permute_neon(void) {
+static void test_permute_24_neon(void) {
 #if BACKEND == BACKEND_NEON
-  for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_24_TESTS) / sizeof(PERMUTE_24_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_24_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_24_TESTS[i].a, sizeof(got));
     permute_n_neon(got, 24); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_24_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_24_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_NEON */
 }
 
-static void test_permute_diet_neon(void) {
+static void test_permute_24_diet_neon(void) {
 #if BACKEND == BACKEND_DIET_NEON
-  for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_24_TESTS) / sizeof(PERMUTE_24_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_24_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_24_TESTS[i].a, sizeof(got));
     permute_n_diet_neon(got, 24); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_24_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_24_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_DIET_NEON */
 }
 
-static void test_permute_hybrid(void) {
+static void test_permute_24_hybrid(void) {
 #if BACKEND == BACKEND_HYBRID
-  for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_24_TESTS) / sizeof(PERMUTE_24_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_24_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_24_TESTS[i].a, sizeof(got));
     permute_n_hybrid(got, 24); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_24_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_24_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_HYBRID */
@@ -3067,85 +3057,85 @@ static const struct {
   uint64_t a[25]; // input state
   const uint64_t exp[25]; // expected value
   const size_t exp_len; // length of exp, in bytes
-} PERMUTE12_TESTS[] = {{
+} PERMUTE_12_TESTS[] = {{
   .a = { [0] = 0x00000001997b5853ULL, [16] = 0x8000000000000000ULL },
   .exp = { 0X8B346BAFF5DA94C6ULL, 0XD7D37EC35E3B2EECULL, 0XBBF724EABFD84018ULL, 0X5E3C1AFA4EA7B3A1ULL },
   .exp_len = 32,
 }};
 
-static void test_permute12_scalar(void) {
-  for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
+static void test_permute_12_scalar(void) {
+  for (size_t i = 0; i < sizeof(PERMUTE_12_TESTS) / sizeof(PERMUTE_12_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_12_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_12_TESTS[i].a, sizeof(got));
     permute_n_scalar(got, 12); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_12_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_12_TESTS[i].exp, exp_len);
     }
   }
 }
 
-static void test_permute12_avx512(void) {
+static void test_permute_12_avx512(void) {
 #if BACKEND == BACKEND_AVX512
-  for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_12_TESTS) / sizeof(PERMUTE_12_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_12_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_12_TESTS[i].a, sizeof(got));
     permute_n_avx512(got, 12); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_12_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_12_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_AVX512 */
 }
 
-static void test_permute12_neon(void) {
+static void test_permute_12_neon(void) {
 #if BACKEND == BACKEND_NEON
-  for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_12_TESTS) / sizeof(PERMUTE_12_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_12_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_12_TESTS[i].a, sizeof(got));
     permute_n_neon(got, 12); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_12_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_12_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_NEON */
 }
 
-static void test_permute12_diet_neon(void) {
+static void test_permute_12_diet_neon(void) {
 #if BACKEND == BACKEND_DIET_NEON
-  for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_12_TESTS) / sizeof(PERMUTE_12_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_12_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_12_TESTS[i].a, sizeof(got));
     permute_n_diet_neon(got, 12); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_12_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_12_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_DIET_NEON */
 }
 
-static void test_permute12_hybrid(void) {
+static void test_permute_12_hybrid(void) {
 #if BACKEND == BACKEND_HYBRID
-  for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
-    const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
+  for (size_t i = 0; i < sizeof(PERMUTE_12_TESTS) / sizeof(PERMUTE_12_TESTS[0]); i++) {
+    const size_t exp_len = PERMUTE_12_TESTS[i].exp_len;
 
     uint64_t got[25] = { 0 };
-    memcpy(got, PERMUTE12_TESTS[i].a, sizeof(got));
+    memcpy(got, PERMUTE_12_TESTS[i].a, sizeof(got));
     permute_n_hybrid(got, 12); // call permute_n() directly
 
-    if (memcmp(got, PERMUTE12_TESTS[i].exp, exp_len)) {
-      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
+    if (memcmp(got, PERMUTE_12_TESTS[i].exp, exp_len)) {
+      fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_12_TESTS[i].exp, exp_len);
     }
   }
 #endif /* BACKEND == BACKEND_HYBRID */
@@ -7303,16 +7293,16 @@ int main(void) {
   test_pi();
   test_chi();
   test_iota();
-  test_permute_scalar();
-  test_permute_avx512();
-  test_permute_neon();
-  test_permute_diet_neon();
-  test_permute_hybrid();
-  test_permute12_scalar();
-  test_permute12_avx512();
-  test_permute12_neon();
-  test_permute12_diet_neon();
-  test_permute12_hybrid();
+  test_permute_24_scalar();
+  test_permute_24_avx512();
+  test_permute_24_neon();
+  test_permute_24_diet_neon();
+  test_permute_24_hybrid();
+  test_permute_12_scalar();
+  test_permute_12_avx512();
+  test_permute_12_neon();
+  test_permute_12_diet_neon();
+  test_permute_12_hybrid();
   test_sha3_224();
   test_sha3_256();
   test_sha3_384();
