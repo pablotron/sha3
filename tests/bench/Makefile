@@ -1,7 +1,7 @@
 # get backend from environment, or fall back to 0 if unspecified
-SHA3_BACKEND ?= 0
+BACKEND ?= 0
 
-CFLAGS=-std=c11 -W -Wall -Wextra -Wpedantic -Werror -g -O3 -march=native -mtune=native -DSHA3_BACKEND=$(SHA3_BACKEND)
+CFLAGS=-std=c11 -W -Wall -Wextra -Wpedantic -Werror -g -O3 -march=native -mtune=native -DBACKEND=$(BACKEND)
 APP=./bench
 OBJS=sha3.o bench.o
 

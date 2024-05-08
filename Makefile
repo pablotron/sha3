@@ -1,8 +1,8 @@
 # backend (0 to auto-detect)
-SHA3_BACKEND ?= 0
+BACKEND ?= 0
 
 # compiler flags used for sample application and shared library
-CFLAGS=-W -Wall -Wextra -Werror -pedantic -std=c11 -fPIC -O3 -march=native -mtune=native -DSHA3_BACKEND=$(SHA3_BACKEND)
+CFLAGS=-W -Wall -Wextra -Werror -pedantic -std=c11 -fPIC -O3 -march=native -mtune=native -DBACKEND=$(BACKEND)
 
 # sample application
 APP=./sha3
@@ -13,7 +13,7 @@ LIB=libsha3.so
 LIB_OBJS=sha3.o
 
 # test app (test suite and sanitizers)
-TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -W -Wall -Wextra -Werror -pedantic -std=c11 -march=native -mtune=native -DSHA3_BACKEND=$(SHA3_BACKEND)
+TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -W -Wall -Wextra -Werror -pedantic -std=c11 -march=native -mtune=native -DBACKEND=$(BACKEND)
 TEST_APP=./test-sha3
 
 .PHONY=test all

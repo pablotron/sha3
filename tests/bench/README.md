@@ -65,7 +65,7 @@ root> echo 2 > /proc/sys/kernel/perf_event_paranoid
 gcc (Debian 12.2.0-14) 12.2.0
 
 # compile with avx512 backend
-> make clean all SHA3_BACKEND=2
+> make clean all BACKEND=2
 
 # benchmark with 2k trials
 > ./bench
@@ -80,7 +80,7 @@ shake128,32,15.5,7.8,6.9,6.2,6.1
 shake256,32,15.6,7.8,7.9,7.6,7.4
 
 # compile with scalar backend
-> make clean all SHA3_BACKEND=1
+> make clean all BACKEND=1
 ...
 
 # benchmark scalar backend with 2k trials
@@ -106,7 +106,7 @@ Cortex-A76
 gcc (Debian 12.2.0-14) 12.2.0
 
 # compile with scalar backend
-> make clean all SHA3_BACKEND=1
+> make clean all BACKEND=1
 ...
 
 # benchmark scalar backend with 2k trials
@@ -122,7 +122,7 @@ shake128,32,20.2,10.1,9.0,8.1,7.9
 shake256,32,20.2,10.3,10.3,9.9,9.7
 
 # compile with neon backend
-> make clean all SHA3_BACKEND=3
+> make clean all BACKEND=3
 ...
 
 # benchmark neon backend with 2k trials
@@ -151,7 +151,7 @@ Cortex-A73
 gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 
 # compile with scalar backend
-> make clean all SHA3_BACKEND=1
+> make clean all BACKEND=1
 ...
 
 # benchmark scalar backend with 2k trials
@@ -167,7 +167,7 @@ shake128,32,34.0,16.1,13.6,12.1,11.8
 shake256,32,34.0,16.1,15.5,14.8,14.4
 
 # compile with neon backend
-> make clean all SHA3_BACKEND=3
+> make clean all BACKEND=3
 
 # benchmark neon backend with 2k trials
 > ./bench 2000

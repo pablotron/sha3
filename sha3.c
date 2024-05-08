@@ -33,23 +33,23 @@
 #define BACKEND_DIET_NEON 4   // Neon backend which uses fewer registers
 #define BACKEND_HYBRID_NEON 5 // Hybrid neon backend
 
-// if SHA3_BACKEND is defined and set to 0 (the default), then unset it
+// if BACKEND is defined and set to 0 (the default), then unset it
 // and auto-detect the appropriate backend
-#if defined(SHA3_BACKEND) && SHA3_BACKEND == BACKEND_AUTO
-#undef SHA3_BACKEND
-#endif /* defined(SHA3_BACKEND) && SHA3_BACKEND == 0 */
+#if defined(BACKEND) && BACKEND == BACKEND_AUTO
+#undef BACKEND
+#endif /* defined(BACKEND) && BACKEND == 0 */
 
 // detect backend
-#ifndef SHA3_BACKEND
+#ifndef BACKEND
 #if defined(__AVX512F__)
-#define SHA3_BACKEND BACKEND_AVX512
+#define BACKEND BACKEND_AVX512
 #elif 0 && defined(__ARM_NEON)
-#define SHA3_BACKEND BACKEND_NEON
+#define BACKEND BACKEND_NEON
 #else
 // no optimized backend detected, fall back to scalar
-#define SHA3_BACKEND BACKEND_SCALAR
+#define BACKEND BACKEND_SCALAR
 #endif
-#endif /* !SHA3_BACKEND */
+#endif /* !BACKEND */
 
 // 64-bit rotate left
 #define ROL(v, n) (((v) << (n)) | ((v) >> (64-(n))))
@@ -73,7 +73,7 @@ static const uint64_t RCS[] = {
   0x8000000080008081ULL, 0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL,
 };
 
-#if (SHA3_BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST)
+#if (BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST)
 // If AVX-512 is supported and we are not building the test suite,
 // then do not compile the scalar step functions.
 //
@@ -244,9 +244,9 @@ static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_roun
     iota(a, (SHA3_NUM_ROUNDS - num_rounds + i));
   }
 }
-#endif /* (SHA3_BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST) */
+#endif /* (BACKEND == BACKEND_SCALAR) || defined(SHA3_TEST) */
 
-#if SHA3_BACKEND == BACKEND_AVX512
+#if BACKEND == BACKEND_AVX512
 #include <immintrin.h>
 
 /**
@@ -473,9 +473,9 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
   _mm512_mask_storeu_epi64(s + 5 * 3, 0x1f, r3);
   _mm512_mask_storeu_epi64(s + 5 * 4, 0x1f, r4);
 }
-#endif /* SHA3_BACKEND == BACKEND_AVX512 */
+#endif /* BACKEND == BACKEND_AVX512 */
 
-#if SHA3_BACKEND == BACKEND_NEON
+#if BACKEND == BACKEND_NEON
 #include <arm_neon.h>
 
 // rotate elements in uint64x2_t left by N bits
@@ -780,9 +780,9 @@ static inline void permute_n_neon(uint64_t a[static 25], const size_t num_rounds
   row_store(a + 15, r3);
   row_store(a + 20, r4);
 }
-#endif /* SHA3_BACKEND == BACKEND_NEON */
+#endif /* BACKEND == BACKEND_NEON */
 
-#if SHA3_BACKEND == BACKEND_DIET_NEON
+#if BACKEND == BACKEND_DIET_NEON
 #include <arm_neon.h>
 
 // rotate element in uint64x1_t left by N bits
@@ -1060,9 +1060,9 @@ static inline void permute_n_diet_neon(uint64_t a[static 25], const size_t num_r
   // store column 4 of r4
   vst1_u64(a + 24, row_last(r4));
 }
-#endif /* SHA3_BACKEND == BACKEND_DIET_NEON */
+#endif /* BACKEND == BACKEND_DIET_NEON */
 
-#if (SHA3_BACKEND == BACKEND_HYBRID_NEON)
+#if (BACKEND == BACKEND_HYBRID_NEON)
 #include <arm_neon.h>
 
 /**
@@ -1222,21 +1222,21 @@ static inline void permute_n_hybrid_neon(uint64_t a[static 25], const size_t num
     a[0] ^= RCS[i];
   }
 }
-#endif /* (SHA3_BACKEND == BACKEND_HYBRID_NEON) */
+#endif /* (BACKEND == BACKEND_HYBRID_NEON) */
 
-#if SHA3_BACKEND == BACKEND_AVX512
+#if BACKEND == BACKEND_AVX512
 #define permute_n permute_n_avx512 // use avx512 backend
-#elif SHA3_BACKEND == BACKEND_NEON
+#elif BACKEND == BACKEND_NEON
 #define permute_n permute_n_neon // use neon backend
-#elif SHA3_BACKEND == BACKEND_DIET_NEON
+#elif BACKEND == BACKEND_DIET_NEON
 #define permute_n permute_n_diet_neon // use diet-neon backend
-#elif SHA3_BACKEND == BACKEND_HYBRID_NEON
+#elif BACKEND == BACKEND_HYBRID_NEON
 #define permute_n permute_n_hybrid_neon // use hybrid-neon backend
-#elif SHA3_BACKEND == BACKEND_SCALAR
+#elif BACKEND == BACKEND_SCALAR
 #define permute_n permute_n_scalar // use scalar backend
 #else
 #error "unknown sha3 backend"
-#endif /* SHA3_BACKEND */
+#endif /* BACKEND */
 
 /**
  * @brief 24 round Keccak permutation.
@@ -2723,17 +2723,17 @@ void k12_once(const uint8_t *src, const size_t src_len, uint8_t *dst, const size
 
 // Return backend name.
 const char *sha3_backend(void) {
-#if SHA3_BACKEND == BACKEND_AVX512
+#if BACKEND == BACKEND_AVX512
   return "avx512";
-#elif SHA3_BACKEND == BACKEND_NEON
+#elif BACKEND == BACKEND_NEON
   return "neon";
-#elif SHA3_BACKEND == BACKEND_DIET_NEON
+#elif BACKEND == BACKEND_DIET_NEON
   return "diet-neon";
-#elif SHA3_BACKEND == BACKEND_HYBRID_NEON
+#elif BACKEND == BACKEND_HYBRID_NEON
   return "hybrid-neon";
-#elif SHA3_BACKEND == BACKEND_SCALAR
+#elif BACKEND == BACKEND_SCALAR
   return "scalar";
-#endif /* SHA3_BACKEND */
+#endif /* BACKEND */
 }
 
 #ifdef SHA3_TEST
@@ -2993,7 +2993,7 @@ static void test_permute_scalar(void) {
 }
 
 static void test_permute_avx512(void) {
-#if SHA3_BACKEND == BACKEND_AVX512
+#if BACKEND == BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -3005,11 +3005,11 @@ static void test_permute_avx512(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_AVX512 */
+#endif /* BACKEND == BACKEND_AVX512 */
 }
 
 static void test_permute_neon(void) {
-#if SHA3_BACKEND == BACKEND_NEON
+#if BACKEND == BACKEND_NEON
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -3021,11 +3021,11 @@ static void test_permute_neon(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_NEON */
+#endif /* BACKEND == BACKEND_NEON */
 }
 
 static void test_permute_diet_neon(void) {
-#if SHA3_BACKEND == BACKEND_DIET_NEON
+#if BACKEND == BACKEND_DIET_NEON
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -3037,11 +3037,11 @@ static void test_permute_diet_neon(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_DIET_NEON */
+#endif /* BACKEND == BACKEND_DIET_NEON */
 }
 
 static void test_permute_hybrid_neon(void) {
-#if SHA3_BACKEND == BACKEND_HYBRID_NEON
+#if BACKEND == BACKEND_HYBRID_NEON
   for (size_t i = 0; i < sizeof(PERMUTE_TESTS) / sizeof(PERMUTE_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE_TESTS[i].exp_len;
 
@@ -3053,7 +3053,7 @@ static void test_permute_hybrid_neon(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_HYBRID_NEON */
+#endif /* BACKEND == BACKEND_HYBRID_NEON */
 }
 
 static const struct {
@@ -3081,7 +3081,7 @@ static void test_permute12_scalar(void) {
 }
 
 static void test_permute12_avx512(void) {
-#if SHA3_BACKEND == BACKEND_AVX512
+#if BACKEND == BACKEND_AVX512
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
@@ -3093,11 +3093,11 @@ static void test_permute12_avx512(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_AVX512 */
+#endif /* BACKEND == BACKEND_AVX512 */
 }
 
 static void test_permute12_neon(void) {
-#if SHA3_BACKEND == BACKEND_NEON
+#if BACKEND == BACKEND_NEON
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
@@ -3109,11 +3109,11 @@ static void test_permute12_neon(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_NEON */
+#endif /* BACKEND == BACKEND_NEON */
 }
 
 static void test_permute12_diet_neon(void) {
-#if SHA3_BACKEND == BACKEND_DIET_NEON
+#if BACKEND == BACKEND_DIET_NEON
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
@@ -3125,11 +3125,11 @@ static void test_permute12_diet_neon(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_DIET_NEON */
+#endif /* BACKEND == BACKEND_DIET_NEON */
 }
 
 static void test_permute12_hybrid_neon(void) {
-#if SHA3_BACKEND == BACKEND_HYBRID_NEON
+#if BACKEND == BACKEND_HYBRID_NEON
   for (size_t i = 0; i < sizeof(PERMUTE12_TESTS) / sizeof(PERMUTE12_TESTS[0]); i++) {
     const size_t exp_len = PERMUTE12_TESTS[i].exp_len;
 
@@ -3141,7 +3141,7 @@ static void test_permute12_hybrid_neon(void) {
       fail_test(__func__, "", (uint8_t*) got, exp_len, (uint8_t*) PERMUTE12_TESTS[i].exp, exp_len);
     }
   }
-#endif /* SHA3_BACKEND == BACKEND_HYBRID_NEON */
+#endif /* BACKEND == BACKEND_HYBRID_NEON */
 }
 
 static void test_sha3_224(void) {
@@ -7348,7 +7348,7 @@ int main(void) {
   test_turboshake256();
   test_k12_length_encode();
   test_k12();
-  printf("ok\n");
+  printf("ok (%s)\n", sha3_backend());
 }
 
 #endif /* SHA3_TEST */

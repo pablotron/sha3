@@ -203,20 +203,20 @@ size.
 ## Backends
 
 This library includes several accelerated backends which are selectable
-at compile time via the `SHA3_BACKEND` make argument and define.  By
-default the fastest backend is selected at compile-time.
+at compile time via the `BACKEND` make argument and define.  By default
+the fastest backend is selected at compile-time.
 
 The available backends are:
 
-- Scalar (`SHA3_BACKEND=1`): Default if no faster backend is available.
-- [AVX-512][] (`SHA3_BACKEND=2`): [AVX-512][] acceleration.  Selected by
+- Scalar (`BACKEND=1`): Default if no faster backend is available.
+- [AVX-512][] (`BACKEND=2`): [AVX-512][] acceleration.  Selected by
   default if [AVX-512][] is supported.
-- [Neon][] (`SHA3_BACKEND=3`): ARM [Neon][] acceleration.  Currently
-  slower than the scalar backend on ARM CPUs and not enabled by default.
+- [Neon][] (`BACKEND=3`): ARM [Neon][] acceleration.  Currently slower
+  than the scalar backend on ARM CPUs and not enabled by default.
 
 The name of the selected backend is available at run-time via the
 `sha3_backend()` function.  See the `tests/bench/` for examples of the
-`SHA3_BACKEND` make argument and the `sha3_backend()` function.
+`BACKEND` make argument and the `sha3_backend()` function.
 
 ## Benchmarks
 
