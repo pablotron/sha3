@@ -18,12 +18,12 @@
  * - TurboSHAKE128 and TurboSHAKE256
  * - KangarooTwelve
  */
+
+/** @cond INTERNAL */
 #include <stdbool.h> // true, false
 #include <stdint.h> // uint64_t
 #include <string.h> // memcpy()
 #include "sha3.h"
-
-/** @cond INTERNAL */
 
 // available backends
 #define BACKEND_AUTO 0        // auto-detect (default)
