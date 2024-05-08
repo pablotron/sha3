@@ -172,7 +172,8 @@ See the `examples/` directory for more.
 To use this library in your application:
 
 1. Copy `sha3.h` and `sha3.c` into your source tree.
-2. Update your build system to compile `sha3.o`.
+2. Update your build system to compile `sha3.o`.  See the `Makefile` for
+   compiler flags.
 3. Include `sha3.h` in your application.
 
 See the top-level `Makefile` and the examples for recommended
@@ -198,6 +199,67 @@ available in `tests/cavp-tests/`.  These test cases are generated from
 the [Cryptographic Algorithm Validation Program (CAVP)][cavp] byte test
 vectors, and are excluded from the main test suite because of their
 size.
+
+## Backends
+
+This library includes several accelerated backends which are selectable
+at compile time via the `SHA3_BACKEND` make argument and define.  By
+default the fastest backend is selected at compile-time.
+
+The available backends are:
+
+- Scalar (`SHA3_BACKEND=1`): Default if no faster backend is available.
+- [AVX-512][] (`SHA3_BACKEND=2`): [AVX-512][] acceleration.  Selected by
+  default if [AVX-512][] is supported.
+- [Neon][] (`SHA3_BACKEND=3`): ARM [Neon][] acceleration.  Currently
+  slower than the scalar backend on ARM CPUs and not enabled by default.
+
+The name of the selected backend is available at run-time via the
+`sha3_backend()` function.  See the `tests/bench/` for examples of the
+`SHA3_BACKEND` make argument and the `sha3_backend()` function.
+
+## Benchmarks
+
+A minimal [libcpucycles][]-based benchmarking tool is available in
+`tests/bench/`.  The `bench` tool measures the [median][] [cycles per
+byte (cpb)][cpb] for a variety of message lengths, then prints a table
+of results to standard output in [CSV][] format.
+
+The results from running `bench` on a couple of my systems are available
+in the tables below.
+
+### Lenovo ThinkPad X1 Carbon, 6th Gen (i7-1185G7, AVX-512 Backend)
+
+| function | 64 | 256 | 1024 | 4096 | 16384 |
+| -------- | -- | --- | ---- | ---- | ----- |
+| sha3-224 | 15.4 | 7.8 | 7.8 | 7.1 | 7.0 |
+| sha3-256 | 15.4 | 7.8 | 7.8 | 7.6 | 7.4 |
+| sha3-384 | 15.5 | 11.7 | 9.8 | 9.8 | 9.7 |
+| sha3-512 | 15.4 | 15.5 | 14.6 | 13.9 | 13.9 |
+| shake128 | 15.5 | 7.8 | 6.9 | 6.2 | 6.1 |
+| shake256 | 15.6 | 7.8 | 7.9 | 7.6 | 7.4 |
+
+### Raspberry Pi 5 (Cortex-A76, Scalar Backend)
+
+| function | 64 | 256 | 1024 | 4096 | 16384 |
+| -------- | -- | --- | ---- | ---- | ----- |
+| sha3-224 | 20.2 | 10.3 | 10.3 | 9.3 | 9.2 |
+| sha3-256 | 20.2 | 10.3 | 10.3 | 9.9 | 9.7 |
+| sha3-384 | 20.9 | 15.3 | 12.8 | 12.7 | 12.5 |
+| sha3-512 | 20.2 | 20.2 | 18.9 | 25.3 | 17.9 |
+| shake128 | 20.2 | 10.1 | 9.0 | 8.1 | 7.9 |
+| shake256 | 20.2 | 10.3 | 10.3 | 9.9 | 9.7 |
+
+### Odroid N2L (Cortex-A73, Scalar Backend)
+
+| function | 64 | 256 | 1024 | 4096 | 16384 |
+| -------- | -- | --- | ---- | ---- | ----- |
+| sha3-224 | 34.0 | 16.1 | 15.5 | 14.0 | 13.7 |
+| sha3-256 | 34.0 | 16.1 | 15.4 | 14.8 | 14.4 |
+| sha3-384 | 34.0 | 23.4 | 19.0 | 18.8 | 18.6 |
+| sha3-512 | 34.0 | 30.8 | 28.1 | 26.5 | 26.5 |
+| shake128 | 34.0 | 16.1 | 13.6 | 12.1 | 11.8 |
+| shake256 | 34.0 | 16.1 | 15.5 | 14.8 | 14.4 |
 
 ## References
 
@@ -280,3 +342,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   "sha3 API documentation."
 [cavp]: https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing
   "Cryptographic Algorithm Validation Program (CAVP)"
+[neon]: https://en.wikipedia.org/wiki/ARM_architecture_family#Advanced_SIMD_(Neon)
+  "Advanced SIMD extension for ARM CPUs"
+[csv]: https://en.wikipedia.org/wiki/Comma-separated_values
+  "Comma-Separated Value (CSV)"
+[libcpucycles]: https://cpucycles.cr.yp.to/
+  "Microlibrary for counting CPU cycles."
+[cpb]: https://en.wikipedia.org/wiki/Encryption_software#Performance
+  "Observed CPU cycles divided by the number of input bytes."
