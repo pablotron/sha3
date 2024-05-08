@@ -477,8 +477,9 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 #if SHA3_BACKEND == BACKEND_NEON
 #include <arm_neon.h>
 
+// rotate elements in uint64x2_t left by N bits
 // vrax1q_u64() not supported on pizza
-#define VROLQ(A, N) (vorrq_u64(vshlq_n_u64((A), (N)), vshrq_n_u64((A), 64-(N))))
+#define VROLQ(A, N) vsriq_n_u64(vshlq_n_u64((A), (N)), (A), 64-(N))
 
 // keccak row, represented as 3 128-bit vector registers
 //
@@ -784,11 +785,11 @@ static inline void permute_n_neon(uint64_t a[static 25], const size_t num_rounds
 #include <arm_neon.h>
 
 // rotate element in uint64x1_t left by N bits
-#define VROL(A, N) (vorr_u64(vshl_n_u64((A), (N)), vshr_n_u64((A), 64-(N))))
+#define VROL(A, N) vsri_n_u64(vshl_n_u64((A), (N)), (A), 64-(N))
 
 // rotate elements in uint64x2_t left by N bits
 // note: vrax1q_u64() not supported on pizza
-#define VROLQ(A, N) (vorrq_u64(vshlq_n_u64((A), (N)), vshrq_n_u64((A), 64-(N))))
+#define VROLQ(A, N) vsriq_n_u64(vshlq_n_u64((A), (N)), (A), 64-(N))
 
 // keccak row, represented as 3 128-bit vector registers
 //
