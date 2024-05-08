@@ -2361,7 +2361,7 @@ void k12_squeeze(k12_t *k12, uint8_t *dst, const size_t len);
  * @brief Get name of backend.
  * @ingroup misc
  *
- * @note Returns a read-only string which much not be freed by the
+ * @note Returns a read-only string which must not be freed by the
  * caller.
  *
  * Example:
