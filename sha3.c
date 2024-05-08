@@ -1099,18 +1099,24 @@ static inline void permute_n_hybrid_neon(uint64_t a[static 25], const size_t num
 
     const uint64x2_t d0 = { d[0], d[1] },
                      d1 = { d[2], d[3] };
+    const uint64x1_t d2 = { d[4] };
 
     uint64x2_t r0a = { a[ 0], a[ 1] }, r0b = { a[ 2], a[ 3] },
                r1a = { a[ 5], a[ 6] }, r1b = { a[ 7], a[ 8] },
                r2a = { a[10], a[11] }, r2b = { a[12], a[13] },
                r3a = { a[15], a[16] }, r3b = { a[17], a[18] },
                r4a = { a[20], a[21] }, r4b = { a[22], a[23] };
+    uint64x1_t r0c = { a[ 4] },
+               r1c = { a[ 9] },
+               r2c = { a[14] },
+               r3c = { a[19] },
+               r4c = { a[24] };
 
-    r0a ^= d0; r0b ^= d1; a[ 4] ^= d[4];
-    r1a ^= d0; r1b ^= d1; a[ 9] ^= d[4];
-    r2a ^= d0; r2b ^= d1; a[14] ^= d[4];
-    r3a ^= d0; r3b ^= d1; a[19] ^= d[4];
-    r4a ^= d0; r4b ^= d1; a[24] ^= d[4];
+    r0a ^= d0; r0b ^= d1; r0c ^= d2;
+    r1a ^= d0; r1b ^= d1; r1c ^= d2;
+    r2a ^= d0; r2b ^= d1; r2c ^= d2;
+    r3a ^= d0; r3b ^= d1; r3c ^= d2;
+    r4a ^= d0; r4b ^= d1; r4c ^= d2;
 
 
     // rho
@@ -1125,32 +1131,37 @@ static inline void permute_n_hybrid_neon(uint64_t a[static 25], const size_t num
                               r3b_ids = { 15, 21 },
                               r4a_ids = { 18,  2 },
                               r4b_ids = { 61, 56 };
+      static const uint64x1_t r0c_ids = { 27 },
+                              r1c_ids = { 20 },
+                              r2c_ids = { 39 },
+                              r3c_ids = {  8 },
+                              r4c_ids = { 14 };
 
       r0a = (r0a << r0a_ids) | (r0a >> (64 - r0a_ids));
       r0b = (r0b << r0b_ids) | (r0b >> (64 - r0b_ids));
-      a[ 4] = ROL(a[ 4], 27); // 91 % 64 = 27
+      r0c = (r0c << r0c_ids) | (r0c >> (64 - r0c_ids));
 
       r1a = (r1a << r1a_ids) | (r1a >> (64 - r1a_ids));
       r1b = (r1b << r1b_ids) | (r1b >> (64 - r1b_ids));
-      a[ 9] = ROL(a[ 9], 20); // 276 % 64 = 20
+      r1c = (r1c << r1c_ids) | (r1c >> (64 - r1c_ids));
 
       r2a = (r2a << r2a_ids) | (r2a >> (64 - r2a_ids));
       r2b = (r2b << r2b_ids) | (r2b >> (64 - r2b_ids));
-      a[14] = ROL(a[14], 39); // 231 % 64 = 39
+      r2c = (r2c << r2c_ids) | (r2c >> (64 - r2c_ids));
 
       r3a = (r3a << r3a_ids) | (r3a >> (64 - r3a_ids));
       r3b = (r3b << r3b_ids) | (r3b >> (64 - r3b_ids));
-      a[19] = ROL(a[19],  8); // 136 % 64 = 8
+      r3c = (r3c << r3c_ids) | (r3c >> (64 - r3c_ids));
 
       r4a = (r4a << r4a_ids) | (r4a >> (64 - r4a_ids));
       r4b = (r4b << r4b_ids) | (r4b >> (64 - r4b_ids));
-      a[24] = ROL(a[24], 14); // 78 % 64 = 14
+      r4c = (r4c << r4c_ids) | (r4c >> (64 - r4c_ids));
 
-      vst1q_u64(a +  0, r0a); vst1q_u64(a +  2, r0b);
-      vst1q_u64(a +  5, r1a); vst1q_u64(a +  7, r1b);
-      vst1q_u64(a + 10, r2a); vst1q_u64(a + 12, r2b);
-      vst1q_u64(a + 15, r3a); vst1q_u64(a + 17, r3b);
-      vst1q_u64(a + 20, r4a); vst1q_u64(a + 22, r4b);
+      vst1q_u64(a +  0, r0a); vst1q_u64(a +  2, r0b); vst1_u64(a +  4, r0c);
+      vst1q_u64(a +  5, r1a); vst1q_u64(a +  7, r1b); vst1_u64(a +  9, r1c);
+      vst1q_u64(a + 10, r2a); vst1q_u64(a + 12, r2b); vst1_u64(a + 14, r2c);
+      vst1q_u64(a + 15, r3a); vst1q_u64(a + 17, r3b); vst1_u64(a + 19, r3c);
+      vst1q_u64(a + 20, r4a); vst1q_u64(a + 22, r4b); vst1_u64(a + 24, r4c);
     }
 
     // pi
