@@ -841,7 +841,6 @@ _Bool hmac_sha3_512_absorb(hmac_sha3_t *ctx, const uint8_t *src, const size_t le
  */
 void hmac_sha3_512_final(hmac_sha3_t *ctx, uint8_t mac[64]);
 
-
 /**
  * @defgroup cshake cSHAKE
  *
