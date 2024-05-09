@@ -33,6 +33,35 @@
 // there are currently 5 backends, but only 2 of them -- scalar and
 // avx512 -- are auto-detected.  the remaining three are experimental
 // neon backends and are currently slower than the scalar backend.
+//
+// To add a new backend:
+//
+// 1. Add a "#define BACKEND_FOO UNIQUE_ID" line to this section.
+//    Example: "#define BACKEND_FOO 99".
+// 2. (optional) if the backend can be automatically detected, add a
+//    #elif branch to the auto-detect section below.
+// 3. Add a section which begins with "#if BACKEND == BACKEND_FOO" and
+//    ends with "#endif /* BACKEND == BACKEND_FOO */" and contains a
+//    `permute_n_foo()` function and any helper functions.
+// 4. Add a branch to the "map permute_n()" block which maps
+//    `permute_n()` to `permute_n_foo()`.
+// 5. Add a branch to the "sha3_backend()" which returns the name of
+//    your backend.
+// 6. Add `test_permute_12_foo()` and `test_permute_24_foo()` test
+//    functions in the TEST_SHA3 block.  Use the test functions for the
+//    other backends as a template.
+// 7. Add calls to the test functions from the previous step to `main()`.
+//
+// At this point you should be able to run the test suite and build the
+// top-level shared library, the top-level example application, and the
+// applications in the `examples/` directory with your new backend.
+//
+// For example, to run the test suite against the backend with a unique
+// ID of 99, you would do this:
+//
+//   # run test suite against backend 99
+//   make test BACKEND=99
+//
 #define BACKEND_AUTO 0        // auto-detect (default)
 #define BACKEND_SCALAR 1      // scalar backend
 #define BACKEND_AVX512 2      // AVX-512 backend
@@ -1281,6 +1310,7 @@ static inline void permute_n_hybrid(uint64_t a[static 25], const size_t num_roun
 }
 #endif /* (BACKEND == BACKEND_HYBRID) */
 
+// map permute_n() to active backend
 #if BACKEND == BACKEND_AVX512
 #define permute_n permute_n_avx512 // use avx512 backend
 #elif BACKEND == BACKEND_NEON
@@ -1311,9 +1341,6 @@ static inline void permute_24(uint64_t s[static 25]) {
 static inline void permute_12(uint64_t s[static 25]) {
   permute_n(s, 12);
 }
-
-// absorb message into state, return updated byte count
-// used by `hash_absorb()`, `hash_once()`, and `xof_absorb_raw()`
 
 /**
  * @brief Absorb message into state and return updated byte count.
