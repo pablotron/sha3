@@ -1988,6 +1988,22 @@ void parallelhash256_xof_once(const parallelhash_params_t params, const uint8_t 
  */
 
 /**
+ * @brief Iterative [XOF][] context (all members are private) for XOFs
+ * with 12 round permutations.
+ * @ingroup turboshake
+ *
+ * @note Used internally by TurboSHAKE and KangarooTwelve.
+ *
+ * [xof]: https://en.wikipedia.org/wiki/Extendable-output_function
+ *   "Extendable-Output Function (XOF)"
+ */
+typedef struct {
+  size_t num_bytes; /**< number of bytes absorbed */
+  sha3_state_t a; /**< internal state */
+  _Bool squeezing; /**< mode (absorbing or squeezing) */
+} sha3_xof12_t;
+
+/**
  * @brief Absorb bytes into TurboSHAKE128 [XOF][], then squeeze bytes out.
  * @ingroup turboshake
  *
@@ -2091,7 +2107,7 @@ void turboshake256_custom(const uint8_t pad, const uint8_t *src, const size_t sr
  *   "Extendable-Output Function (XOF)"
  */
 typedef struct {
-  sha3_xof_t xof; /**< XOF context (private) */
+  sha3_xof12_t xof; /**< XOF context (private) */
   uint8_t pad; /**< Padding byte (private) */
 } turboshake_t;
 

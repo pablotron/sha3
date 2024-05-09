@@ -1776,8 +1776,8 @@ static inline void xof_once(const size_t rate, const uint8_t pad, const uint8_t 
  *
  * @param[in,out] xof XOF12 context.
  */
-static inline void xof12_init(sha3_xof_t * const xof) {
-  memset(xof, 0, sizeof(sha3_xof_t));
+static inline void xof12_init(sha3_xof12_t * const xof) {
+  memset(xof, 0, sizeof(sha3_xof12_t));
 }
 
 /**
@@ -1787,11 +1787,11 @@ static inline void xof12_init(sha3_xof_t * const xof) {
  * Called by `xof12_absorb()` and `xof12_once()`.
  *
  * @param[in,out] xof XOF12 context.
- * @param[in] rate Rate of XOF function.
+ * @param[in] rate Rate of XOF12 function.
  * @param[in] m Pointer to buffer containing chunk of input message.
  * @param[in] m_len Length of input message chunk, in bytes.
  */
-static inline void xof12_absorb_raw(sha3_xof_t * const xof, const size_t rate, const uint8_t *m, size_t m_len) {
+static inline void xof12_absorb_raw(sha3_xof12_t * const xof, const size_t rate, const uint8_t *m, size_t m_len) {
   xof->num_bytes = absorb_12(&(xof->a), xof->num_bytes, rate, m, m_len);
 }
 
@@ -1806,7 +1806,7 @@ static inline void xof12_absorb_raw(sha3_xof_t * const xof, const size_t rate, c
  * @return `true` if the input message chunk was absorbed, or `false` if
  * this XOF context has already been squeezed.
  */
-static inline _Bool xof12_absorb(sha3_xof_t * const xof, const size_t rate, const uint8_t * const m, size_t m_len) {
+static inline _Bool xof12_absorb(sha3_xof12_t * const xof, const size_t rate, const uint8_t * const m, size_t m_len) {
   // check context state
   if (xof->squeezing) {
     // xof has already been squeezed, return error
@@ -1823,10 +1823,10 @@ static inline _Bool xof12_absorb(sha3_xof_t * const xof, const size_t rate, cons
  * from absorbing to squeezing.
  *
  * @param[in,out] xof XOF12 context.
- * @param[in] rate Rate of XOF function.
- * @param[in] pad Padding byte of XOF function.
+ * @param[in] rate Rate of XOF12 function.
+ * @param[in] pad Padding byte of XOF12 function.
  */
-static inline void xof12_absorb_done(sha3_xof_t * const xof, const size_t rate, const uint8_t pad) {
+static inline void xof12_absorb_done(sha3_xof12_t * const xof, const size_t rate, const uint8_t pad) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
   xof->a.u8[xof->num_bytes] ^= pad;
@@ -1848,7 +1848,7 @@ static inline void xof12_absorb_done(sha3_xof_t * const xof, const size_t rate, 
  * @param[out] dst Pointer to destination buffer.
  * @param[out] dst_len Length of destination buffer, in bytes.
  */
-static inline void xof12_squeeze_raw(sha3_xof_t * const xof, const size_t rate, uint8_t *dst, size_t dst_len) {
+static inline void xof12_squeeze_raw(sha3_xof12_t * const xof, const size_t rate, uint8_t *dst, size_t dst_len) {
   if (!xof->num_bytes) {
     // num_bytes is zero, so we are reading from the start of the
     // internal state buffer.  while `dst_len` is greater than rate,
@@ -1898,7 +1898,7 @@ static inline void xof12_squeeze_raw(sha3_xof_t * const xof, const size_t rate, 
  * @param[out] dst Pointer to destination buffer.
  * @param[in] dst_len Length of destination buffer, in bytes.
  */
-static inline void xof12_squeeze(sha3_xof_t * const xof, const size_t rate, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
+static inline void xof12_squeeze(sha3_xof12_t * const xof, const size_t rate, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
   // check state
   if (!xof->squeezing) {
     // finalize absorb
@@ -1920,7 +1920,7 @@ static inline void xof12_squeeze(sha3_xof_t * const xof, const size_t rate, cons
  */
 static inline void xof12_once(const size_t rate, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   // init
-  sha3_xof_t xof;
+  sha3_xof12_t xof;
   xof12_init(&xof);
 
   // absorb
