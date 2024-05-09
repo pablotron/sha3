@@ -26,6 +26,13 @@
 #include "sha3.h"
 
 // available backends
+//
+// each backend implements a permute_n_<backend>() function, which is
+// wrapped in a #if/#endif pair below.
+//
+// there are currently 5 backends, but only 2 of them -- scalar and
+// avx512 -- are auto-detected.  the remaining three are experimental
+// neon backends and are currently slower than the scalar backend.
 #define BACKEND_AUTO 0        // auto-detect (default)
 #define BACKEND_SCALAR 1      // scalar backend
 #define BACKEND_AVX512 2      // AVX-512 backend
@@ -700,7 +707,15 @@ static inline uint64x2_t pi_lo_hi(const uint64x2_t a, const uint64x2_t b) {
   return vextq_u64(c, c, 1);
 }
 
-// neon keccak permutation with inlined steps
+/**
+ * @brief Neon Keccak permutation.
+ *
+ * @param[in,out] s Keccak state (array of 25 64-bit integers).
+ * @param[in] num_rounds Number of rounds (12 or 24).
+ *
+ * @note Experimental Neon backend.  Slower than scalar backend and not
+ * enabled by default.
+ */
 static inline void permute_n_neon(uint64_t a[static 25], const size_t num_rounds) {
   // Map of Keccak state to 64-bit lanes of 128-bit registers
   // ---------------------------------------------------------
@@ -947,7 +962,16 @@ static inline uint64x2_t pi_lo_hi(const uint64x2_t a, const uint64x2_t b) {
   return vextq_u64(c, c, 1);
 }
 
-// diet-neon keccak permutation with inlined steps
+/**
+ * @brief Neon Keccak permutation.
+ *
+ * @param[in,out] s Keccak state (array of 25 64-bit integers).
+ * @param[in] num_rounds Number of rounds (12 or 24).
+ *
+ * @note Experimental Neon backend which uses one fewer 64-bit register
+ * than the "neon" backend.  Slower than scalar backend and not enabled
+ * by default.
+ */
 static inline void permute_n_diet_neon(uint64_t a[static 25], const size_t num_rounds) {
   // load rows
   row_t r0, r1, r2, r3, r4;
@@ -1096,6 +1120,8 @@ static inline void permute_n_diet_neon(uint64_t a[static 25], const size_t num_r
  *
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
  * @param[in] num_rounds Number of rounds (12 or 24).
+ *
+ * @note Slower than scalar backend and not enabled by default.
  */
 static inline void permute_n_hybrid(uint64_t a[static 25], const size_t num_rounds) {
   uint64_t tmp[25] = { 0 };
@@ -1279,8 +1305,8 @@ static inline void permute_24(uint64_t s[static 25]) {
 
 /**
  * @brief 12 round Keccak permutation.
- * @note Only used by TurboSHAKE and KangarooTwelve.
  * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ * @note Only used by TurboSHAKE and KangarooTwelve.
  */
 static inline void permute_12(uint64_t s[static 25]) {
   permute_n(s, 12);
@@ -1288,6 +1314,18 @@ static inline void permute_12(uint64_t s[static 25]) {
 
 // absorb message into state, return updated byte count
 // used by `hash_absorb()`, `hash_once()`, and `xof_absorb_raw()`
+
+/**
+ * @brief Absorb message into state and return updated byte count.
+ *
+ * Used by `hash_once()`, `hash_absorb()`, `xof_absorb_raw()`.
+ *
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ * @param[in] num_bytes Number of absorbed bytes since last permute.
+ * @param[in] rate Rate of has function.
+ * @param[in] m Pointer to input message chunk.
+ * @param[in] m_len Length of input message chunk, in bytes.
+ */
 static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size_t rate, const uint8_t *m, size_t m_len) {
   // absorb aligned chunks
   if ((num_bytes & 7) == 0 && (((uintptr_t) m) & 7) == 0) {
@@ -1345,9 +1383,18 @@ static inline size_t absorb(sha3_state_t * const a, size_t num_bytes, const size
   return num_bytes;
 }
 
-// absorb message into xof12 state, return updated byte count
-// used by `xof12_absorb_raw()`
-static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const size_t rate, const uint8_t *m, size_t m_len) {
+/**
+ * @brief Absorb message into XOF12 state and return updated byte count.
+ *
+ * Used by `xof12_absorb_raw()`.
+ *
+ * @param[in,out] a Keccak state (array of 25 64-bit integers).
+ * @param[in] num_bytes Number of absorbed bytes since last permute.
+ * @param[in] rate Rate of hash function.
+ * @param[in] m Pointer to input message chunk.
+ * @param[in] m_len Length of input message chunk, in bytes.
+ */
+static inline size_t absorb_12(sha3_state_t * const a, size_t num_bytes, const size_t rate, const uint8_t *m, size_t m_len) {
   // absorb aligned chunks
   if ((num_bytes & 7) == 0 && (((uintptr_t) m) & 7) == 0) {
     // absorb 32 byte chunks (4 x uint64)
@@ -1437,7 +1484,18 @@ static inline size_t absorb12(sha3_state_t * const a, size_t num_bytes, const si
 //
 #define RATE(len) (200 - 2 * (len))
 
-// one-shot sha3 hash.
+/**
+ * @brief One-shot function which hashes the input message and writes
+ * the digest to the destination buffer.
+ *
+ * Used by `sha3_224()`, `sha3_256()`, `sha3_384()` and `sha3_512()`.
+ *
+ * @param[in] m Pointer to input message.
+ * @param[in] m_len Length of input message, in bytes.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[in] dst_len Length of destination buffer, in bytes.  Used to
+ * determine the rate of the hash function.
+ */
 static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst, const size_t dst_len) {
   // init state
   sha3_state_t a = { .u64 = { 0 } };
@@ -1457,14 +1515,32 @@ static inline void hash_once(const uint8_t *m, size_t m_len, uint8_t * const dst
   memcpy(dst, a.u8, dst_len);
 }
 
-// Initialize iterative hash context.
+/**
+ * @brief Initialize iterative hash context.
+ *
+ * Used by `sha3_224_init()`, `sha3_256_init()`, `sha3_384_init()` and
+ * `sha3_512_init()`.
+ *
+ * @param[in,out] hash Hash context.
+ */
 static inline void hash_init(sha3_t * const hash) {
   memset(hash, 0, sizeof(sha3_t));
 }
 
-// Absorb data into iterative hash context.
-//
-// Returns `false` if the has context has already been finalized.
+/**
+ * @brief Absorb data into iterative hash context.
+ *
+ * Used by `sha3_224_absorb()`, `sha3_256_absorb()`, `sha3_384_absorb()`
+ * and `sha3_512_absorb()`.
+ *
+ * @param[in,out] hash Hash context.
+ * @param[in] rate Hash function rate.
+ * @param[in] src Pointer to buffer containing chunk of input message.
+ * @param[in] src_len Length of input message chunk, in bytes.
+ *
+ * @return True if data was absorbed, and false if the hash context has
+ * already been finalized.
+ */
 static inline bool hash_absorb(sha3_t * const hash, const size_t rate, const uint8_t *src, size_t len) {
   if (hash->finalized) {
     // hash already finalized, return false
@@ -1476,9 +1552,19 @@ static inline bool hash_absorb(sha3_t * const hash, const size_t rate, const uin
   return true;
 }
 
-// Finalize iterative hash context.
-//
-// May be called more than once without affecting the final hash value.
+/**
+ * @brief Finalize iterative hash context.
+ *
+ * Used by `sha3_224_final()`, `sha3_256_final()`, `sha3_384_final()`
+ * and `sha3_512_final()`.
+ *
+ * @param[in,out] hash Hash context.
+ * @param[in] rate Hash function rate.
+ * @param[in] dst Pointer to destination buffer.
+ * @param[in] dst_len Length of destination buffer, in bytes.
+ *
+ * @note May be called more than once without affecting the final digest value.
+ */
 static inline void hash_final(sha3_t * const hash, const size_t rate, uint8_t * dst, const size_t dst_len) {
   if (!hash->finalized) {
     // mark context as final
@@ -1525,22 +1611,41 @@ DEF_HASH(256, 32) // sha3-256
 DEF_HASH(384, 48) // sha3-384
 DEF_HASH(512, 64) // sha3-512
 
-// initialize xof context
+/**
+ * @brief Initialize XOF context.
+ *
+ * @param[in,out] xof XOF context.
+ */
 static inline void xof_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-// Absorb data into XOF context without checking to see if the
-// context has already been squeezed.
-//
-// Called by `xof_absorb()` and `xof_once()`.
+/**
+ * @brief Absorb data into XOF context without checking to see if the
+ * context has already been squeezed.
+ *
+ * Called by `xof_absorb()` and `xof_once()`.
+ *
+ * @param[in,out] xof XOF context.
+ * @param[in] rate Rate of XOF function.
+ * @param[in] m Pointer to buffer containing chunk of input message.
+ * @param[in] m_len Length of input message chunk, in bytes.
+ */
 static inline void xof_absorb_raw(sha3_xof_t * const xof, const size_t rate, const uint8_t *m, size_t m_len) {
   xof->num_bytes = absorb(&(xof->a), xof->num_bytes, rate, m, m_len);
 }
 
-// Absorb data into XOF context.
-//
-// Returns `false` if this context has already been squeezed.
+/**
+ * @brief Absorb data into XOF context.
+ *
+ * @param[in,out] xof XOF context.
+ * @param[in] rate Rate of XOF function.
+ * @param[in] m Pointer to buffer containing chunk of input message.
+ * @param[in] m_len Length of input message chunk, in bytes.
+ *
+ * @return `true` if the input message chunk was absorbed, or `false` if
+ * this XOF context has already been squeezed.
+ */
 static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const uint8_t * const m, size_t m_len) {
   // check context state
   if (xof->squeezing) {
@@ -1553,7 +1658,14 @@ static inline _Bool xof_absorb(sha3_xof_t * const xof, const size_t rate, const 
   return true;
 }
 
-// Finalize absorb, switch mode of XOF context to squeezing.
+/**
+ * @brief Finalize absorb for this XOF context and switch context mode
+ * from absorbing to squeezing.
+ *
+ * @param[in,out] xof XOF context.
+ * @param[in] rate Rate of XOF function.
+ * @param[in] pad Padding byte of XOF function.
+ */
 static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, const uint8_t pad) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
@@ -1568,7 +1680,14 @@ static inline void xof_absorb_done(sha3_xof_t * const xof, const size_t rate, co
   xof->squeezing = true;
 }
 
-// Squeeze data without checking mode (used by `xof_once()`).
+/**
+ * @brief Squeeze data from XOF context without checking mode.
+ *
+ * @param[in,out] xof XOF context.
+ * @param[in] rate Rate of XOF function.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[out] dst_len Length of destination buffer, in bytes.
+ */
 static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, uint8_t *dst, size_t dst_len) {
   if (!xof->num_bytes) {
     // num_bytes is zero, so we are reading from the start of the
@@ -1609,7 +1728,16 @@ static inline void xof_squeeze_raw(sha3_xof_t * const xof, const size_t rate, ui
   }
 }
 
-// squeeze data from xof
+/**
+ * @brief Finalize absorb (if necessary) and then squeeze data from this
+ * XOF context.
+ *
+ * @param[in,out] xof XOF context.
+ * @param[in] rate Rate of XOF function.
+ * @param[in] pad Padding byte of XOF function.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[in] dst_len Length of destination buffer, in bytes.
+ */
 static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
   // check state
   if (!xof->squeezing) {
@@ -1620,7 +1748,16 @@ static inline void xof_squeeze(sha3_xof_t * const xof, const size_t rate, const 
   xof_squeeze_raw(xof, rate, dst, dst_len);
 }
 
-// one-shot xof absorb and squeeze
+/**
+ * @brief One-shot XOF absorb and squeeze.
+ *
+ * @param[in] rate Rate of XOF function.
+ * @param[in] pad Padding byte of XOF function.
+ * @param[in] src Pointer to buffer containing input message.
+ * @param[in] src_len Length of input message, in bytes.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[out] dst_len Length of destination buffer, in bytes.
+ */
 static inline void xof_once(const size_t rate, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   // init
   sha3_xof_t xof;
@@ -1634,22 +1771,41 @@ static inline void xof_once(const size_t rate, const uint8_t pad, const uint8_t 
   xof_squeeze_raw(&xof, rate, dst, dst_len);
 }
 
-// initialize xof12 context
+/**
+ * @brief Initialize XOF12 context.
+ *
+ * @param[in,out] xof XOF12 context.
+ */
 static inline void xof12_init(sha3_xof_t * const xof) {
   memset(xof, 0, sizeof(sha3_xof_t));
 }
 
-// Absorb data into XOF12 context without checking to see if the
-// context has already been squeezed.
-//
-// Called by `xof12_absorb()` and `xof12_once()`.
+/**
+ * @brief Absorb data into XOF12 context without checking to see if the
+ * context has already been squeezed.
+ *
+ * Called by `xof12_absorb()` and `xof12_once()`.
+ *
+ * @param[in,out] xof XOF12 context.
+ * @param[in] rate Rate of XOF function.
+ * @param[in] m Pointer to buffer containing chunk of input message.
+ * @param[in] m_len Length of input message chunk, in bytes.
+ */
 static inline void xof12_absorb_raw(sha3_xof_t * const xof, const size_t rate, const uint8_t *m, size_t m_len) {
-  xof->num_bytes = absorb12(&(xof->a), xof->num_bytes, rate, m, m_len);
+  xof->num_bytes = absorb_12(&(xof->a), xof->num_bytes, rate, m, m_len);
 }
 
-// Absorb data into XOF context.
-//
-// Returns `false` if this XOF12 context has already been squeezed.
+/**
+ * @brief Absorb data into XOF12 context.
+ *
+ * @param[in,out] xof XOF12 context.
+ * @param[in] rate Rate of XOF12 function.
+ * @param[in] m Pointer to buffer containing chunk of input message.
+ * @param[in] m_len Length of input message chunk, in bytes.
+ *
+ * @return `true` if the input message chunk was absorbed, or `false` if
+ * this XOF context has already been squeezed.
+ */
 static inline _Bool xof12_absorb(sha3_xof_t * const xof, const size_t rate, const uint8_t * const m, size_t m_len) {
   // check context state
   if (xof->squeezing) {
@@ -1662,7 +1818,14 @@ static inline _Bool xof12_absorb(sha3_xof_t * const xof, const size_t rate, cons
   return true;
 }
 
-// Finalize absorb, switch mode of XOF12 context to squeezing.
+/**
+ * @brief Finalize absorb for this XOF12 context and switch context mode
+ * from absorbing to squeezing.
+ *
+ * @param[in,out] xof XOF12 context.
+ * @param[in] rate Rate of XOF function.
+ * @param[in] pad Padding byte of XOF function.
+ */
 static inline void xof12_absorb_done(sha3_xof_t * const xof, const size_t rate, const uint8_t pad) {
   // append suffix (s6.2) and padding
   // (note: suffix and padding are ambiguous in spec)
@@ -1677,7 +1840,14 @@ static inline void xof12_absorb_done(sha3_xof_t * const xof, const size_t rate, 
   xof->squeezing = true;
 }
 
-// Squeeze data without checking mode (used by `xof12_once()`).
+/**
+ * @brief Squeeze data from XOF12 context without checking mode.
+ *
+ * @param[in,out] xof XOF12 context.
+ * @param[in] rate Rate of XOF12 function.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[out] dst_len Length of destination buffer, in bytes.
+ */
 static inline void xof12_squeeze_raw(sha3_xof_t * const xof, const size_t rate, uint8_t *dst, size_t dst_len) {
   if (!xof->num_bytes) {
     // num_bytes is zero, so we are reading from the start of the
@@ -1718,7 +1888,16 @@ static inline void xof12_squeeze_raw(sha3_xof_t * const xof, const size_t rate, 
   }
 }
 
-// squeeze data from xof12 context
+/**
+ * @brief Finalize absorb (if necessary) and then squeeze data from this
+ * XOF12 context.
+ *
+ * @param[in,out] xof XOF12 context.
+ * @param[in] rate Rate of XOF12 function.
+ * @param[in] pad Padding byte of XOF12 function.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[in] dst_len Length of destination buffer, in bytes.
+ */
 static inline void xof12_squeeze(sha3_xof_t * const xof, const size_t rate, const uint8_t pad, uint8_t * const dst, const size_t dst_len) {
   // check state
   if (!xof->squeezing) {
@@ -1729,7 +1908,16 @@ static inline void xof12_squeeze(sha3_xof_t * const xof, const size_t rate, cons
   xof12_squeeze_raw(xof, rate, dst, dst_len);
 }
 
-// one-shot xof12 absorb and squeeze
+/**
+ * @brief One-shot XOF12 absorb and squeeze.
+ *
+ * @param[in] rate Rate of XOF12 function.
+ * @param[in] pad Padding byte of XOF12 function.
+ * @param[in] src Pointer to buffer containing input message.
+ * @param[in] src_len Length of input message, in bytes.
+ * @param[out] dst Pointer to destination buffer.
+ * @param[out] dst_len Length of destination buffer, in bytes.
+ */
 static inline void xof12_once(const size_t rate, const uint8_t pad, const uint8_t * const src, const size_t src_len, uint8_t * const dst, const size_t dst_len) {
   // init
   sha3_xof_t xof;
