@@ -1,8 +1,11 @@
-CFLAGS=-W -Wall -Wextra -Werror -pedantic -std=c11 -O3 -march=native -mtune=native
+# backend (0 to auto-detect)
+BACKEND ?= 0
+
+CFLAGS=-W -Wall -Wextra -Werror -pedantic -std=c11 -O3 -march=native -mtune=native -DBACKEND=$(BACKEND)
 APP=./tuplehash128-example
 OBJS=sha3.o main.o
 
-.PHONY=all
+.PHONY=all clean
 
 all: $(APP)
 

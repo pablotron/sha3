@@ -2,7 +2,7 @@ CFLAGS=-W -Wall -Wextra -Werror -pedantic -std=c11 -O3 -march=native -mtune=nati
 APP=./test-permute
 OBJS=permute.o
 
-.PHONY=test all
+.PHONY=test all clean
 
 all: $(APP)
 

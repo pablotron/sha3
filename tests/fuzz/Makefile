@@ -1,4 +1,7 @@
-CFLAGS=-g -fsanitize=address,fuzzer -W -Wall -Wextra -Werror -pedantic -std=c11
+# backend (0 to auto-detect)
+BACKEND ?= 0
+
+CFLAGS=-g -fsanitize=address,fuzzer -W -Wall -Wextra -Werror -pedantic -std=c11 -DBACKEND=$(BACKEND)
 APP=./fuzz-shake128
 OBJS=sha3.o fuzz.o
 CC=clang
