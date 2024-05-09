@@ -13,7 +13,16 @@ LIB=libsha3.so
 LIB_OBJS=sha3.o
 
 # test app (test suite and sanitizers)
-TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -W -Wall -Wextra -Werror -pedantic -std=c11 -march=native -mtune=native -DBACKEND=$(BACKEND)
+#
+# note: some older versions of GCC may have trouble with these sanitizer
+# options.  if the compiler is giving you grief, try changing the
+# "-fsanitize" parameter to "-fsanitize=undefined" or removing the
+# "-fsanitize" parameter completely
+#
+# as noted in https://github.com/pablotron/fips203ipd/issues/1, macos
+# clang and gcc do not support -fsanitize=leak, so i have removed it for
+# now
+TEST_CFLAGS=-g -fsanitize=address,pointer-compare,pointer-subtract,undefined -W -Wall -Wextra -Werror -pedantic -std=c11 -march=native -mtune=native -DBACKEND=$(BACKEND)
 TEST_APP=./test-sha3
 
 .PHONY=test all
