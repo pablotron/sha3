@@ -290,12 +290,12 @@ static inline void iota(uint64_t a[static 25], const int i) {
  */
 static inline void permute_n_scalar(uint64_t a[static 25], const size_t num_rounds) {
   uint64_t tmp[25] = { 0 };
-  for (size_t i = 0; i < num_rounds; i++) {
+  for (size_t i = (SHA3_NUM_ROUNDS - num_rounds); __builtin_expect(i < SHA3_NUM_ROUNDS, 1); i++) {
     theta(a);
     rho(a);
     pi(tmp, a);
     chi(a, tmp);
-    iota(a, (SHA3_NUM_ROUNDS - num_rounds + i));
+    iota(a, i);
   }
 }
 #endif /* (BACKEND == BACKEND_SCALAR) || defined(TEST_SHA3) */
