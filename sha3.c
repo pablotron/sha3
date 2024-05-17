@@ -343,7 +343,7 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
           r4 = _mm512_maskz_loadu_epi64(0x1f, s + 20); // row 4
 
   // loop over rounds
-  for (size_t i = 0; i < num_rounds; i++) {
+  for (size_t i = (SHA3_NUM_ROUNDS - num_rounds); __builtin_expect(i < SHA3_NUM_ROUNDS, 1); i++) {
     // theta
     {
       // permute ids
@@ -506,11 +506,8 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 
     // iota
     {
-      // calculate RCS offset
-      const size_t ofs = SHA3_NUM_ROUNDS - num_rounds + i;
-
       // xor round constant to first cell
-      r0 = _mm512_mask_xor_epi64(r0, 1, r0, _mm512_maskz_loadu_epi64(1, RCS + ofs));
+      r0 = _mm512_mask_xor_epi64(r0, 1, r0, _mm512_maskz_loadu_epi64(1, RCS + i));
     }
   }
 
