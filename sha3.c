@@ -727,7 +727,7 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
                       b_lo = (_mm256_permute4x64_epi64(r0_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r0_hi, CHI_I1_LO) & ~LM0),
                       b_hi = _mm256_permute4x64_epi64(r0_lo, CHI_I1_HI);
 
-        r0_lo ^= ~a_lo & b_lo; r0_hi ^= ~a_hi & b_hi; // r0 ^= ~a & b
+        r0_lo ^= _mm256_andnot_si256(a_lo, b_lo); r0_hi ^= _mm256_andnot_si256(a_hi, b_hi); // r0 ^= ~a & b
       }
 
       // r1
@@ -737,7 +737,7 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
                       b_lo = (_mm256_permute4x64_epi64(r1_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r1_hi, CHI_I1_LO) & ~LM0),
                       b_hi = _mm256_permute4x64_epi64(r1_lo, CHI_I1_HI);
 
-        r1_lo ^= ~a_lo & b_lo; r1_hi ^= ~a_hi & b_hi; // r1 ^= ~a & b
+        r1_lo ^= _mm256_andnot_si256(a_lo, b_lo); r1_hi ^= _mm256_andnot_si256(a_hi, b_hi); // r1 ^= ~a & b
       }
 
       // r2
@@ -747,7 +747,7 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
                       b_lo = (_mm256_permute4x64_epi64(r2_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r2_hi, CHI_I1_LO) & ~LM0),
                       b_hi = _mm256_permute4x64_epi64(r2_lo, CHI_I1_HI);
 
-        r2_lo ^= ~a_lo & b_lo; r2_hi ^= ~a_hi & b_hi; // r2 ^= ~a & b
+        r2_lo ^= _mm256_andnot_si256(a_lo, b_lo); r2_hi ^= _mm256_andnot_si256(a_hi, b_hi); // r2 ^= ~a & b
       }
 
       // r3
@@ -757,7 +757,7 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
                       b_lo = (_mm256_permute4x64_epi64(r3_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r3_hi, CHI_I1_LO) & ~LM0),
                       b_hi = _mm256_permute4x64_epi64(r3_lo, CHI_I1_HI);
 
-        r3_lo ^= ~a_lo & b_lo; r3_hi ^= ~a_hi & b_hi; // r3 ^= ~a & b
+        r3_lo ^= _mm256_andnot_si256(a_lo, b_lo); r3_hi ^= _mm256_andnot_si256(a_hi, b_hi); // r3 ^= ~a & b
       }
 
       // r4
@@ -767,7 +767,7 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
                       b_lo = (_mm256_permute4x64_epi64(r4_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r4_hi, CHI_I1_LO) & ~LM0),
                       b_hi = _mm256_permute4x64_epi64(r4_lo, CHI_I1_HI);
 
-        r4_lo ^= ~a_lo & b_lo; r4_hi ^= ~a_hi & b_hi; // r4 ^= ~a & b
+        r4_lo ^= _mm256_andnot_si256(a_lo, b_lo); r4_hi ^= _mm256_andnot_si256(a_hi, b_hi); // r4 ^= ~a & b
       }
     }
 
