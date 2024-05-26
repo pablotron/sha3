@@ -320,19 +320,56 @@ static void rho_avx2(uint64_t s[static 25]) {
 
 // pi step of avx2 keccak permutation.
 static inline void pi_avx2(uint64_t s[static 25]) {
-  static const __m256i V0_LO = {  0,  6, 12, 18 },
-                       V1_LO = {  3,  9, 10, 16 },
-                       V2_LO = {  1,  7, 13, 19 },
-                       V3_LO = {  4,  5, 11, 17 },
-                       V4_LO = {  2,  8, 14, 15 };
-  static const size_t V0_HI = 24, V1_HI = 22, V2_HI = 20, V3_HI = 23, V4_HI = 21;
-  union { long long int *i64; uint64_t *u64; } p = { .u64 = s }; \
+  static const __m256i LM0 = { ~0,  0,  0,  0 },
+                       LM1 = {  0, ~0,  0,  0 },
+                       LM2 = {  0,  0, ~0,  0 },
+                       LM3 = {  0,  0,  0, ~0 };
+  static const uint8_t T0_LO = 0xe4, T0_HI = 0x00, // 0b11100100 -> 0xe4
+                       T1_LO = 0x43, T1_HI = 0x02, // 0b01000011 -> 0x43
+                       T2_LO = 0x39, T2_HI = 0x00, // 0b00111001 -> 0x39
+                       T3_LO = 0x90, T3_HI = 0x03, // 0b10010000 -> 0x90
+                       T4_LO = 0x0e, T4_HI = 0x01; // 0b00001110 -> 0x0e
+  LOAD(s);
+/* 
+ *   static const __m256i V0_LO = {  0,  6, 12, 18 },
+ *                        V1_LO = {  3,  9, 10, 16 },
+ *                        V2_LO = {  1,  7, 13, 19 },
+ *                        V3_LO = {  4,  5, 11, 17 },
+ *                        V4_LO = {  2,  8, 14, 15 };
+ *   static const size_t V0_HI = 24, V1_HI = 22, V2_HI = 20, V3_HI = 23, V4_HI = 21;
+ */ 
 
-  __m256i r0_lo = _mm256_i64gather_epi64(p.i64, V0_LO, 8), r0_hi = { s[V0_HI] },
-          r1_lo = _mm256_i64gather_epi64(p.i64, V1_LO, 8), r1_hi = { s[V1_HI] },
-          r2_lo = _mm256_i64gather_epi64(p.i64, V2_LO, 8), r2_hi = { s[V2_HI] },
-          r3_lo = _mm256_i64gather_epi64(p.i64, V3_LO, 8), r3_hi = { s[V3_HI] },
-          r4_lo = _mm256_i64gather_epi64(p.i64, V4_LO, 8), r4_hi = { s[V4_HI] };
+  const __m256i t0_lo = (_mm256_permute4x64_epi64(r0_lo, T0_LO) & LM0) |
+                        (_mm256_permute4x64_epi64(r1_lo, T0_LO) & LM1) |
+                        (_mm256_permute4x64_epi64(r2_lo, T0_LO) & LM2) |
+                        (_mm256_permute4x64_epi64(r3_lo, T0_LO) & LM3),
+                t0_hi = (_mm256_permute4x64_epi64(r4_hi, T0_HI) & LM0),
+                t1_lo = (_mm256_permute4x64_epi64(r0_lo, T1_LO) & LM0) |
+                        (_mm256_permute4x64_epi64(r1_hi, T1_LO) & LM1) |
+                        (_mm256_permute4x64_epi64(r2_lo, T1_LO) & LM2) |
+                        (_mm256_permute4x64_epi64(r3_lo, T1_LO) & LM3),
+                t1_hi = (_mm256_permute4x64_epi64(r4_lo, T1_HI) & LM0),
+                t2_lo = (_mm256_permute4x64_epi64(r0_lo, T2_LO) & LM0) |
+                        (_mm256_permute4x64_epi64(r1_lo, T2_LO) & LM1) |
+                        (_mm256_permute4x64_epi64(r2_lo, T2_LO) & LM2) |
+                        (_mm256_permute4x64_epi64(r3_hi, T2_LO) & LM3),
+                t2_hi = (_mm256_permute4x64_epi64(r4_lo, T2_HI) & LM0),
+                t3_lo = (_mm256_permute4x64_epi64(r0_hi, T3_LO) & LM0) |
+                        (_mm256_permute4x64_epi64(r1_lo, T3_LO) & LM1) |
+                        (_mm256_permute4x64_epi64(r2_lo, T3_LO) & LM2) |
+                        (_mm256_permute4x64_epi64(r3_lo, T3_LO) & LM3),
+                t3_hi = (_mm256_permute4x64_epi64(r4_lo, T3_HI) & LM0),
+                t4_lo = (_mm256_permute4x64_epi64(r0_lo, T4_LO) & LM0) |
+                        (_mm256_permute4x64_epi64(r1_lo, T4_LO) & LM1) |
+                        (_mm256_permute4x64_epi64(r2_hi, T4_LO) & LM2) |
+                        (_mm256_permute4x64_epi64(r3_lo, T4_LO) & LM3),
+                t4_hi = (_mm256_permute4x64_epi64(r4_lo, T4_HI) & LM0);
+
+  r0_lo = t0_lo; r0_hi = t0_hi;
+  r1_lo = t1_lo; r1_hi = t1_hi;
+  r2_lo = t2_lo; r2_hi = t2_hi;
+  r3_lo = t3_lo; r3_hi = t3_hi;
+  r4_lo = t4_lo; r4_hi = t4_hi;
 
   STORE(s);
 }
