@@ -526,7 +526,11 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 #if BACKEND == BACKEND_AVX2
 #include <immintrin.h>
 
-static const __m256i M0 = { ~0, 0, 0, 0 }, // mask, first lane only
+// lane masks
+static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
+                     LM1 = {  0, ~0,  0,  0 },
+                     LM2 = {  0,  0, ~0,  0 },
+                     LM3 = {  0,  0,  0, ~0 },
                      K64 = { 64, 64, 64, 64 }; // 64, all lanes (used by ROLV)
 
 // load state array to avx2 registers
@@ -553,11 +557,11 @@ static const __m256i M0 = { ~0, 0, 0, 0 }, // mask, first lane only
   _mm256_storeu_epi64(p.i64 + 10, r2_lo); /* row 2, cols 0-3 */ \
   _mm256_storeu_epi64(p.i64 + 15, r3_lo); /* row 3, cols 0-3 */ \
   _mm256_storeu_epi64(p.i64 + 20, r4_lo); /* row 4, cols 0-3 */ \
-  _mm256_maskstore_epi64(p.i64 +  4, M0, r0_hi); /* row 0, col 4 */ \
-  _mm256_maskstore_epi64(p.i64 +  9, M0, r1_hi); /* row 1, col 4 */ \
-  _mm256_maskstore_epi64(p.i64 + 14, M0, r2_hi); /* row 2, col 4 */ \
-  _mm256_maskstore_epi64(p.i64 + 19, M0, r3_hi); /* row 3, col 4 */ \
-  _mm256_maskstore_epi64(p.i64 + 24, M0, r4_hi); /* row 4, col 4 */ \
+  _mm256_maskstore_epi64(p.i64 +  4, LM0, r0_hi); /* row 0, col 4 */ \
+  _mm256_maskstore_epi64(p.i64 +  9, LM0, r1_hi); /* row 1, col 4 */ \
+  _mm256_maskstore_epi64(p.i64 + 14, LM0, r2_hi); /* row 2, col 4 */ \
+  _mm256_maskstore_epi64(p.i64 + 19, LM0, r3_hi); /* row 3, col 4 */ \
+  _mm256_maskstore_epi64(p.i64 + 24, LM0, r4_hi); /* row 4, col 4 */ \
 } while (0)
 
 // rotate left immediate
@@ -645,15 +649,11 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
       // static const __m512i I0 = { 4, 0, 1, 2, 3 },
       //                      I1 = { 1, 2, 3, 4, 0 };
 
-      // masks
-      static const __m256i M0 = { ~0,  0,  0,  0 }, // { 1, 0, 0, 0 }
-                           M1 = { ~0, ~0, ~0,  0 }; // { 1, 1, 1, 0 }
-
       // d = xor(permute(i0, c), permute(i1, rol(c, 1)))
-      const __m256i d0_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I0_LO) & ~M0) | (c_hi & M0),
-                    d0_hi = _mm256_permute4x64_epi64(c_lo, THETA_I0_HI) & M0,
-                    d1_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I1_LO) & M1) | (_mm256_permute4x64_epi64(c_hi, THETA_I1_HI) & ~M1),
-                    d1_hi = (c_lo & M0),
+      const __m256i d0_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I0_LO) & ~LM0) | (c_hi & LM0),
+                    d0_hi = _mm256_permute4x64_epi64(c_lo, THETA_I0_HI) & LM0,
+                    d1_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I1_LO) & ~LM3) | (_mm256_permute4x64_epi64(c_hi, THETA_I1_HI) & LM3),
+                    d1_hi = (c_lo & LM0),
                     d_lo = d0_lo ^ AVX2_ROLI(d1_lo, 1),
                     d_hi = d0_hi ^ AVX2_ROLI(d1_hi, 1);
 
@@ -682,11 +682,6 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
 
     // pi
     {
-      static const __m256i LM0 = { ~0,  0,  0,  0 },
-                           LM1 = {  0, ~0,  0,  0 },
-                           LM2 = {  0,  0, ~0,  0 },
-                           LM3 = {  0,  0,  0, ~0 };
-
       const __m256i t0_lo = (_mm256_permute4x64_epi64(r0_lo, PI_T0_LO) & LM0) |
                             (_mm256_permute4x64_epi64(r1_lo, PI_T0_LO) & LM1) |
                             (_mm256_permute4x64_epi64(r2_lo, PI_T0_LO) & LM2) |
@@ -722,57 +717,52 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
 
     // chi
     {
-      // masks
-      static const __m256i M0 = { ~0,  0,  0,  0 }, // { 1, 0, 0, 0 }
-                           M1 = { ~0, ~0, ~0,  0 }, // { 1, 1, 1, 0 }
-                           M2 = { ~0, ~0,  0, ~0 }; // { 1, 1, 0, 1 }
-
       // r0
       {
-        const __m256i a_lo = (_mm256_permute4x64_epi64(r0_lo, CHI_I0_LO) & M1) | (_mm256_permute4x64_epi64(r0_hi, CHI_I0_LO) & ~M1),
-                      a_hi = r0_lo & M0,
-                      b_lo = (_mm256_permute4x64_epi64(r0_lo, CHI_I1_LO) & M2) | (_mm256_permute4x64_epi64(r0_hi, CHI_I1_LO) & ~M0),
-                      b_hi = _mm256_permute4x64_epi64(r0_lo, CHI_I1_HI) & M0;
+        const __m256i a_lo = (_mm256_permute4x64_epi64(r0_lo, CHI_I0_LO) & ~LM3) | (_mm256_permute4x64_epi64(r0_hi, CHI_I0_LO) & LM3),
+                      a_hi = r0_lo & LM0,
+                      b_lo = (_mm256_permute4x64_epi64(r0_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r0_hi, CHI_I1_LO) & ~LM0),
+                      b_hi = _mm256_permute4x64_epi64(r0_lo, CHI_I1_HI) & LM0;
 
         r0_lo ^= ~a_lo & b_lo; r0_hi ^= ~a_hi & b_hi; // r0 ^= ~a & b
       }
 
       // r1
       {
-        const __m256i a_lo = (_mm256_permute4x64_epi64(r1_lo, CHI_I0_LO) & M1) | (_mm256_permute4x64_epi64(r1_hi, CHI_I0_LO) & ~M1),
-                      a_hi = r1_lo & M0,
-                      b_lo = (_mm256_permute4x64_epi64(r1_lo, CHI_I1_LO) & M2) | (_mm256_permute4x64_epi64(r1_hi, CHI_I1_LO) & ~M0),
-                      b_hi = _mm256_permute4x64_epi64(r1_lo, CHI_I1_HI) & M0;
+        const __m256i a_lo = (_mm256_permute4x64_epi64(r1_lo, CHI_I0_LO) & ~LM3) | (_mm256_permute4x64_epi64(r1_hi, CHI_I0_LO) & LM3),
+                      a_hi = r1_lo & LM0,
+                      b_lo = (_mm256_permute4x64_epi64(r1_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r1_hi, CHI_I1_LO) & ~LM0),
+                      b_hi = _mm256_permute4x64_epi64(r1_lo, CHI_I1_HI) & LM0;
 
         r1_lo ^= ~a_lo & b_lo; r1_hi ^= ~a_hi & b_hi; // r1 ^= ~a & b
       }
 
       // r2
       {
-        const __m256i a_lo = (_mm256_permute4x64_epi64(r2_lo, CHI_I0_LO) & M1) | (_mm256_permute4x64_epi64(r2_hi, CHI_I0_LO) & ~M1),
-                      a_hi = r2_lo & M0,
-                      b_lo = (_mm256_permute4x64_epi64(r2_lo, CHI_I1_LO) & M2) | (_mm256_permute4x64_epi64(r2_hi, CHI_I1_LO) & ~M0),
-                      b_hi = _mm256_permute4x64_epi64(r2_lo, CHI_I1_HI) & M0;
+        const __m256i a_lo = (_mm256_permute4x64_epi64(r2_lo, CHI_I0_LO) & ~LM3) | (_mm256_permute4x64_epi64(r2_hi, CHI_I0_LO) & LM3),
+                      a_hi = r2_lo & LM0,
+                      b_lo = (_mm256_permute4x64_epi64(r2_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r2_hi, CHI_I1_LO) & ~LM0),
+                      b_hi = _mm256_permute4x64_epi64(r2_lo, CHI_I1_HI) & LM0;
 
         r2_lo ^= ~a_lo & b_lo; r2_hi ^= ~a_hi & b_hi; // r2 ^= ~a & b
       }
 
       // r3
       {
-        const __m256i a_lo = (_mm256_permute4x64_epi64(r3_lo, CHI_I0_LO) & M1) | (_mm256_permute4x64_epi64(r3_hi, CHI_I0_LO) & ~M1),
-                      a_hi = r3_lo & M0,
-                      b_lo = (_mm256_permute4x64_epi64(r3_lo, CHI_I1_LO) & M2) | (_mm256_permute4x64_epi64(r3_hi, CHI_I1_LO) & ~M0),
-                      b_hi = _mm256_permute4x64_epi64(r3_lo, CHI_I1_HI) & M0;
+        const __m256i a_lo = (_mm256_permute4x64_epi64(r3_lo, CHI_I0_LO) & ~LM3) | (_mm256_permute4x64_epi64(r3_hi, CHI_I0_LO) & LM3),
+                      a_hi = r3_lo & LM0,
+                      b_lo = (_mm256_permute4x64_epi64(r3_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r3_hi, CHI_I1_LO) & ~LM0),
+                      b_hi = _mm256_permute4x64_epi64(r3_lo, CHI_I1_HI) & LM0;
 
         r3_lo ^= ~a_lo & b_lo; r3_hi ^= ~a_hi & b_hi; // r3 ^= ~a & b
       }
 
       // r4
       {
-        const __m256i a_lo = (_mm256_permute4x64_epi64(r4_lo, CHI_I0_LO) & M1) | (_mm256_permute4x64_epi64(r4_hi, CHI_I0_LO) & ~M1),
-                      a_hi = r4_lo & M0,
-                      b_lo = (_mm256_permute4x64_epi64(r4_lo, CHI_I1_LO) & M2) | (_mm256_permute4x64_epi64(r4_hi, CHI_I1_LO) & ~M0),
-                      b_hi = _mm256_permute4x64_epi64(r4_lo, CHI_I1_HI) & M0;
+        const __m256i a_lo = (_mm256_permute4x64_epi64(r4_lo, CHI_I0_LO) & ~LM3) | (_mm256_permute4x64_epi64(r4_hi, CHI_I0_LO) & LM3),
+                      a_hi = r4_lo & LM0,
+                      b_lo = (_mm256_permute4x64_epi64(r4_lo, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(r4_hi, CHI_I1_LO) & ~LM0),
+                      b_hi = _mm256_permute4x64_epi64(r4_lo, CHI_I1_HI) & LM0;
 
         r4_lo ^= ~a_lo & b_lo; r4_hi ^= ~a_hi & b_hi; // r4 ^= ~a & b
       }
