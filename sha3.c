@@ -536,11 +536,11 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
 // load state array to avx2 registers
 // FIXME: remove macro, not needed
 #define AVX2_LOAD(s) __m256i \
-  r0_lo = _mm256_loadu_epi64(s +  0), /* row 0, cols 0-3 */ \
-  r1_lo = _mm256_loadu_epi64(s +  5), /* row 1, cols 0-3 */ \
-  r2_lo = _mm256_loadu_epi64(s + 10), /* row 2, cols 0-3 */ \
-  r3_lo = _mm256_loadu_epi64(s + 15), /* row 3, cols 0-3 */ \
-  r4_lo = _mm256_loadu_epi64(s + 20), /* row 4, cols 0-3 */ \
+  r0_lo = _mm256_loadu_si256((__m256i*) (s +  0)), /* row 0, cols 0-3 */ \
+  r1_lo = _mm256_loadu_si256((__m256i*) (s +  5)), /* row 1, cols 0-3 */ \
+  r2_lo = _mm256_loadu_si256((__m256i*) (s + 10)), /* row 2, cols 0-3 */ \
+  r3_lo = _mm256_loadu_si256((__m256i*) (s + 15)), /* row 3, cols 0-3 */ \
+  r4_lo = _mm256_loadu_si256((__m256i*) (s + 20)), /* row 4, cols 0-3 */ \
   r0_hi = { s[ 4] },                  /* row 0, col 4 */ \
   r1_hi = { s[ 9] },                  /* row 1, col 4 */ \
   r2_hi = { s[14] },                  /* row 2, col 4 */ \
@@ -552,11 +552,11 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
   union { long long int *i64; uint64_t *u64; } p = { .u64 = s }; \
   \
   /* store rows */ \
-  _mm256_storeu_epi64(p.i64 +  0, r0_lo); /* row 0, cols 0-3 */ \
-  _mm256_storeu_epi64(p.i64 +  5, r1_lo); /* row 1, cols 0-3 */ \
-  _mm256_storeu_epi64(p.i64 + 10, r2_lo); /* row 2, cols 0-3 */ \
-  _mm256_storeu_epi64(p.i64 + 15, r3_lo); /* row 3, cols 0-3 */ \
-  _mm256_storeu_epi64(p.i64 + 20, r4_lo); /* row 4, cols 0-3 */ \
+  _mm256_storeu_si256((__m256i*) (p.i64 +  0), r0_lo); /* row 0, cols 0-3 */ \
+  _mm256_storeu_si256((__m256i*) (p.i64 +  5), r1_lo); /* row 1, cols 0-3 */ \
+  _mm256_storeu_si256((__m256i*) (p.i64 + 10), r2_lo); /* row 2, cols 0-3 */ \
+  _mm256_storeu_si256((__m256i*) (p.i64 + 15), r3_lo); /* row 3, cols 0-3 */ \
+  _mm256_storeu_si256((__m256i*) (p.i64 + 20), r4_lo); /* row 4, cols 0-3 */ \
   _mm256_maskstore_epi64(p.i64 +  4, LM0, r0_hi); /* row 0, col 4 */ \
   _mm256_maskstore_epi64(p.i64 +  9, LM0, r1_hi); /* row 1, col 4 */ \
   _mm256_maskstore_epi64(p.i64 + 14, LM0, r2_hi); /* row 2, col 4 */ \
