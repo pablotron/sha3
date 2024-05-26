@@ -10,3 +10,4 @@ tests/cavp-tests/zip-cache
 tests/bench/bench
 tests/bench/perf.data*
 tests/neon/neon
+tests/avx2/avx2
