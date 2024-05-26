@@ -566,6 +566,12 @@ static const __m256i M0 = { ~0, 0, 0, 0 }, // mask, first lane only
 // rotate left by vector
 #define AVX2_ROLV(v, n) (_mm256_sllv_epi64((v), (n)) | _mm256_srlv_epi64((v), (K64-(n))))
 
+// theta permute IDs
+#define THETA_I0_LO 0x90 // 0, 0, 1, 2 -> 0b10010000 -> 0x90
+#define THETA_I0_HI 0x03 // 3, 0, 0, 0 -> 0b00000011 -> 0x03
+#define THETA_I1_LO 0x39 // 1, 2, 3, 0 -> 0b00111001 -> 0x39
+#define THETA_I1_HI 0x00 // 0, 0, 0, 0 -> 0b00000000 -> 0x00
+
 // pi permute IDs
 #define PI_I0_LO 0x90 // 0, 0, 1, 2 -> 0b10010000 -> 0x90
 #define PI_I0_HI 0x03 // 3, 0, 0, 0 -> 0b00000011 -> 0x03
@@ -642,9 +648,9 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
                            M1 = { ~0, ~0, ~0,  0 }; // { 1, 1, 1, 0 }
 
       // d = xor(permute(i0, c), permute(i1, rol(c, 1)))
-      const __m256i d0_lo = (_mm256_permute4x64_epi64(c_lo, PI_I0_LO) & ~M0) | (c_hi & M0),
-                    d0_hi = _mm256_permute4x64_epi64(c_lo, PI_I0_HI) & M0,
-                    d1_lo = (_mm256_permute4x64_epi64(c_lo, PI_I1_LO) & M1) | (_mm256_permute4x64_epi64(c_hi, PI_I1_HI) & ~M1),
+      const __m256i d0_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I0_LO) & ~M0) | (c_hi & M0),
+                    d0_hi = _mm256_permute4x64_epi64(c_lo, THETA_I0_HI) & M0,
+                    d1_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I1_LO) & M1) | (_mm256_permute4x64_epi64(c_hi, THETA_I1_HI) & ~M1),
                     d1_hi = (c_lo & M0),
                     d_lo = d0_lo ^ AVX2_ROLI(d1_lo, 1),
                     d_hi = d0_hi ^ AVX2_ROLI(d1_hi, 1);
