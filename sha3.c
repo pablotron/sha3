@@ -565,7 +565,7 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // only lane 0
 #define AVX2_ROLI(v, n) (_mm256_slli_epi64((v), (n)) | _mm256_srli_epi64((v), (64-(n))))
 
 // rotate left by vector
-#define AVX2_ROLV(v, n) (_mm256_sllv_epi64((v), (n)) | _mm256_srlv_epi64((v), (K64-(n))))
+#define AVX2_ROLV(v, n) (_mm256_sllv_epi64((v), (n)) | _mm256_srlv_epi64((v), (64-(n))))
 
 // theta permute IDs
 #define THETA_I0_LO 0x90 // 0, 0, 1, 2 -> 0b10010000 -> 0x90
