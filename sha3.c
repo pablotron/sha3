@@ -545,7 +545,6 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // only lane 0
 #define THETA_I1_HI 0x00 // 0, 0, 0, 0 -> 0b00000000 -> 0x00
 
 // pi permute IDs
-#define PI_T0_LO 0xe4 // 0b11100100 -> 0xe4
 #define PI_T1_LO 0x43 // 0b01000011 -> 0x43
 #define PI_T1_HI 0x02
 #define PI_T2_LO 0x39 // 0b00111001 -> 0x39
@@ -557,14 +556,14 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // only lane 0
 #define CHI_MASK 0xc0 // 0b11000000
 
 // chi permute IDs
-#define CHI_I0_LO 0x39 // 1, 2, 3, 0 -> 0b00111001 -> 0x39
-#define CHI_I1_LO 0x0e // 2, 3, 0, 0 -> 0b00001110 -> 0x0e
+#define CHI_A_IDS 0x39 // 1, 2, 3, 0 -> 0b00111001 -> 0x39
+#define CHI_B_IDS 0x0e // 2, 3, 0, 0 -> 0b00001110 -> 0x0e
 
 // chi step
 #define CHI(LO, HI) do { \
-  const __m256i a_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(LO, CHI_I0_LO), _mm256_permute4x64_epi64(HI, CHI_I0_LO), CHI_MASK), \
+  const __m256i a_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(LO, CHI_A_IDS), _mm256_permute4x64_epi64(HI, CHI_A_IDS), CHI_MASK), \
                 a_hi = LO, \
-                b_lo = (_mm256_permute4x64_epi64(LO, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(HI, CHI_I1_LO) & ~LM0), \
+                b_lo = (_mm256_permute4x64_epi64(LO, CHI_B_IDS) & ~LM2) | (_mm256_permute4x64_epi64(HI, CHI_B_IDS) & ~LM0), \
                 b_hi = _mm256_shuffle_epi32(LO, 0x0e); \
   \
   LO ^= _mm256_andnot_si256(a_lo, b_lo); HI ^= _mm256_andnot_si256(a_hi, b_hi); \
@@ -634,8 +633,8 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
       // i0 = { 4, 0, 1, 2, 3 }, i1 = { 1, 2, 3, 4, 0 }
       // d = xor(permute(i0, c), permute(i1, rol(c, 1)))
       const __m256i d0_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I0_LO) & ~LM0) | (c_hi & LM0),
-                    d0_hi = _mm256_permute4x64_epi64(c_lo, THETA_I0_HI) & LM0,
-                    d1_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I1_LO) & ~LM3) | (_mm256_permute4x64_epi64(c_hi, THETA_I1_HI) & LM3),
+                    d0_hi = _mm256_permute4x64_epi64(c_lo, THETA_I0_HI),
+                    d1_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(c_lo, THETA_I1_LO), _mm256_permute4x64_epi64(c_hi, THETA_I1_HI), 0xc0),
                     d1_hi = c_lo,
                     d_lo = d0_lo ^ AVX2_ROLI(d1_lo, 1),
                     d_hi = d0_hi ^ AVX2_ROLI(d1_hi, 1);
@@ -664,20 +663,21 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
 
     // pi
     {
-      const __m256i t0_lo = (_mm256_permute4x64_epi64(r0_lo, PI_T0_LO) & LM0) |
-                            (_mm256_permute4x64_epi64(r1_lo, PI_T0_LO) & LM1) |
-                            (_mm256_permute4x64_epi64(r2_lo, PI_T0_LO) & LM2) |
-                            (_mm256_permute4x64_epi64(r3_lo, PI_T0_LO) & LM3),
+      const __m256i t0_lo = _mm256_blend_epi32((
+                              (r0_lo & LM0) | (r1_lo & LM1) | (r2_lo & LM2)
+                            ), r3_lo, 0xc0),
                     t0_hi = r4_hi,
-                    t1_lo = (_mm256_permute4x64_epi64(r0_lo, PI_T1_LO) & LM0) |
-                            (_mm256_permute4x64_epi64(r1_hi, PI_T1_LO) & LM1) |
-                            (_mm256_permute4x64_epi64(r2_lo, PI_T1_LO) & LM2) |
-                            (_mm256_permute4x64_epi64(r3_lo, PI_T1_LO) & LM3),
+                    t1_lo = _mm256_blend_epi32((
+                              (_mm256_permute4x64_epi64(r0_lo, PI_T1_LO) & LM0) |
+                              (_mm256_permute4x64_epi64(r1_hi, PI_T1_LO) & LM1) |
+                              (_mm256_permute4x64_epi64(r2_lo, PI_T1_LO) & LM2)
+                            ), _mm256_permute4x64_epi64(r3_lo, PI_T1_LO), 0xc0),
                     t1_hi = _mm256_permute4x64_epi64(r4_lo, PI_T1_HI),
-                    t2_lo = (_mm256_permute4x64_epi64(r0_lo, PI_T2_LO) & LM0) |
-                            (_mm256_permute4x64_epi64(r1_lo, PI_T2_LO) & LM1) |
-                            (_mm256_permute4x64_epi64(r2_lo, PI_T2_LO) & LM2) |
-                            (_mm256_permute4x64_epi64(r3_hi, PI_T2_LO) & LM3),
+                    t2_lo = _mm256_blend_epi32((
+                              (_mm256_permute4x64_epi64(r0_lo, PI_T2_LO) & LM0) |
+                              (_mm256_permute4x64_epi64(r1_lo, PI_T2_LO) & LM1) |
+                              (_mm256_permute4x64_epi64(r2_lo, PI_T2_LO) & LM2)
+                            ), _mm256_permute4x64_epi64(r3_hi, PI_T2_LO), 0xc0),
                     t2_hi = r4_lo,
                     t3_lo = (_mm256_permute4x64_epi64(r0_hi, PI_T3_LO) & LM0) |
                             (_mm256_permute4x64_epi64(r1_lo, PI_T3_LO) & LM1) |
