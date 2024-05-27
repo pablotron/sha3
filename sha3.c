@@ -591,12 +591,12 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // only lane 0
 
 // chi step
 #define CHI(LO, HI) do { \
-	const __m256i a_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(LO, CHI_I0_LO), _mm256_permute4x64_epi64(HI, CHI_I0_LO), CHI_MASK), \
-								a_hi = LO, \
-								b_lo = (_mm256_permute4x64_epi64(LO, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(HI, CHI_I1_LO) & ~LM0), \
-								b_hi = _mm256_shuffle_epi32(LO, 0x0e); \
+  const __m256i a_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(LO, CHI_I0_LO), _mm256_permute4x64_epi64(HI, CHI_I0_LO), CHI_MASK), \
+                a_hi = LO, \
+                b_lo = (_mm256_permute4x64_epi64(LO, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(HI, CHI_I1_LO) & ~LM0), \
+                b_hi = _mm256_shuffle_epi32(LO, 0x0e); \
   \
-	LO ^= _mm256_andnot_si256(a_lo, b_lo); HI ^= _mm256_andnot_si256(a_hi, b_hi); \
+  LO ^= _mm256_andnot_si256(a_lo, b_lo); HI ^= _mm256_andnot_si256(a_hi, b_hi); \
 } while (0)
 
 /**
