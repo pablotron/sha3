@@ -635,9 +635,8 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
       const __m256i d0_lo = (_mm256_permute4x64_epi64(c_lo, THETA_I0_LO) & ~LM0) | (c_hi & LM0),
                     d0_hi = _mm256_permute4x64_epi64(c_lo, THETA_I0_HI),
                     d1_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(c_lo, THETA_I1_LO), _mm256_permute4x64_epi64(c_hi, THETA_I1_HI), 0xc0),
-                    d1_hi = c_lo,
                     d_lo = d0_lo ^ AVX2_ROLI(d1_lo, 1),
-                    d_hi = d0_hi ^ AVX2_ROLI(d1_hi, 1);
+                    d_hi = d0_hi ^ AVX2_ROLI(c_lo, 1);
 
       // row = xor(row, d)
       r0_lo ^= d_lo; r1_lo ^= d_lo; r2_lo ^= d_lo; r3_lo ^= d_lo; r4_lo ^= d_lo;
