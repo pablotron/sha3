@@ -80,7 +80,7 @@
 #ifndef BACKEND
 #if defined(__AVX512F__)
 #define BACKEND BACKEND_AVX512
-#elif defined(__AVX2__)
+#elif 0 && defined(__AVX2__)
 #define BACKEND BACKEND_AVX2
 #elif 0 && defined(__ARM_NEON)
 #define BACKEND BACKEND_NEON
