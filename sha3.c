@@ -527,11 +527,10 @@ static inline void permute_n_avx512(uint64_t s[static 25], const size_t num_roun
 #include <immintrin.h>
 
 // lane masks
-static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
-                     LM1 = {  0, ~0,  0,  0 },
-                     LM2 = {  0,  0, ~0,  0 },
-                     LM3 = {  0,  0,  0, ~0 },
-                     K64 = { 64, 64, 64, 64 }; // 64, all lanes (used by ROLV)
+static const __m256i LM0 = { ~0,  0,  0,  0 }, // only lane 0
+                     LM1 = {  0, ~0,  0,  0 }, // only lane 1
+                     LM2 = {  0,  0, ~0,  0 }, // only lane 2
+                     LM3 = {  0,  0,  0, ~0 }; // only lane 3
 
 // load state array to avx2 registers
 // FIXME: remove macro, not needed
@@ -541,17 +540,15 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
   r2_lo = _mm256_loadu_si256((__m256i*) (s + 10)), /* row 2, cols 0-3 */ \
   r3_lo = _mm256_loadu_si256((__m256i*) (s + 15)), /* row 3, cols 0-3 */ \
   r4_lo = _mm256_loadu_si256((__m256i*) (s + 20)), /* row 4, cols 0-3 */ \
-  r0_hi = { s[ 4] },                  /* row 0, col 4 */ \
-  r1_hi = { s[ 9] },                  /* row 1, col 4 */ \
-  r2_hi = { s[14] },                  /* row 2, col 4 */ \
-  r3_hi = { s[19] },                  /* row 3, col 4 */ \
-  r4_hi = { s[24] };                  /* row 4, col 4 */
+  r0_hi = { s[ 4] }, /* row 0, col 4 */ \
+  r1_hi = { s[ 9] }, /* row 1, col 4 */ \
+  r2_hi = { s[14] }, /* row 2, col 4 */ \
+  r3_hi = { s[19] }, /* row 3, col 4 */ \
+  r4_hi = { s[24] }; /* row 4, col 4 */
 
 // store avx2 registers to state array
 #define AVX2_STORE(s) do { \
   union { long long int *i64; uint64_t *u64; } p = { .u64 = s }; \
-  \
-  /* store rows */ \
   _mm256_storeu_si256((__m256i*) (p.i64 +  0), r0_lo); /* row 0, cols 0-3 */ \
   _mm256_storeu_si256((__m256i*) (p.i64 +  5), r1_lo); /* row 1, cols 0-3 */ \
   _mm256_storeu_si256((__m256i*) (p.i64 + 10), r2_lo); /* row 2, cols 0-3 */ \
@@ -578,18 +575,16 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
 
 // pi permute IDs
 #define PI_T0_LO 0xe4 // 0b11100100 -> 0xe4
-#define PI_T0_HI 0x00
 #define PI_T1_LO 0x43 // 0b01000011 -> 0x43
 #define PI_T1_HI 0x02
 #define PI_T2_LO 0x39 // 0b00111001 -> 0x39
-#define PI_T2_HI 0x00
 #define PI_T3_LO 0x90 // 0b10010000 -> 0x90
 #define PI_T3_HI 0x03
 #define PI_T4_LO 0x0e // 0b00001110 -> 0x0e
 #define PI_T4_HI 0x01
 
-// chi a blend mask
-#define CHI_A_MASK 0xc0 // 0b11000000
+// chi blend mask
+#define CHI_MASK 0xc0 // 0b11000000
 
 // chi permute IDs
 #define CHI_I0_LO 0x39 // 1, 2, 3, 0 -> 0b00111001 -> 0x39
@@ -598,7 +593,7 @@ static const __m256i LM0 = { ~0,  0,  0,  0 }, // mask, first lane only
 
 // chi step
 #define CHI(LO, HI) do { \
-	const __m256i a_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(LO, CHI_I0_LO), _mm256_permute4x64_epi64(HI, CHI_I0_LO), CHI_A_MASK), \
+	const __m256i a_lo = _mm256_blend_epi32(_mm256_permute4x64_epi64(LO, CHI_I0_LO), _mm256_permute4x64_epi64(HI, CHI_I0_LO), CHI_MASK), \
 								a_hi = LO, \
 								b_lo = (_mm256_permute4x64_epi64(LO, CHI_I1_LO) & ~LM2) | (_mm256_permute4x64_epi64(HI, CHI_I1_LO) & ~LM0), \
 								b_hi = _mm256_permute4x64_epi64(LO, CHI_I1_HI); \
