@@ -673,19 +673,18 @@ static inline void permute_n_avx2(uint64_t s[static 25], const size_t num_rounds
     // rho
     {
       // rotate values
-      static const __m256i V0_LO = {  0,  1, 62, 28 }, V0_HI = { 27 },
-                           V1_LO = { 36, 44,  6, 55 }, V1_HI = { 20 },
-                           V2_LO = {  3, 10, 43, 25 }, V2_HI = { 39 },
-                           V3_LO = { 41, 45, 15, 21 }, V3_HI = {  8 },
-                           V4_LO = { 18,  2, 61, 56 }, V4_HI = { 14 };
+      static const __m256i V0_LO = {  0,  1, 62, 28 },
+                           V1_LO = { 36, 44,  6, 55 },
+                           V2_LO = {  3, 10, 43, 25 },
+                           V3_LO = { 41, 45, 15, 21 },
+                           V4_LO = { 18,  2, 61, 56 };
 
       // rotate rows
-      // FIXME: could reduce rotates by permuting
-      r0_lo = AVX2_ROLV(r0_lo, V0_LO); r0_hi = AVX2_ROLV(r0_hi, V0_HI);
-      r1_lo = AVX2_ROLV(r1_lo, V1_LO); r1_hi = AVX2_ROLV(r1_hi, V1_HI);
-      r2_lo = AVX2_ROLV(r2_lo, V2_LO); r2_hi = AVX2_ROLV(r2_hi, V2_HI);
-      r3_lo = AVX2_ROLV(r3_lo, V3_LO); r3_hi = AVX2_ROLV(r3_hi, V3_HI);
-      r4_lo = AVX2_ROLV(r4_lo, V4_LO); r4_hi = AVX2_ROLV(r4_hi, V4_HI);
+      r0_lo = AVX2_ROLV(r0_lo, V0_LO); r0_hi = AVX2_ROLI(r0_hi, 27);
+      r1_lo = AVX2_ROLV(r1_lo, V1_LO); r1_hi = AVX2_ROLI(r1_hi, 20);
+      r2_lo = AVX2_ROLV(r2_lo, V2_LO); r2_hi = AVX2_ROLI(r2_hi, 39);
+      r3_lo = AVX2_ROLV(r3_lo, V3_LO); r3_hi = AVX2_ROLI(r3_hi,  8);
+      r4_lo = AVX2_ROLV(r4_lo, V4_LO); r4_hi = AVX2_ROLI(r4_hi, 14);
     }
 
     // pi
