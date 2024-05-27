@@ -2196,7 +2196,7 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
 
 // define hmac-sha3 iterative context and one-shot functions
 #define DEF_HMAC(BITS, OUT_LEN) \
-	/* init hmac-sha3 context */ \
+  /* init hmac-sha3 context */ \
   void hmac_sha3_ ## BITS ## _init(hmac_sha3_t *hmac, const uint8_t *k, const size_t k_len) { \
     /* clear finalized flag */ \
     hmac->finalized = false; \
@@ -2228,12 +2228,12 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     sha3_ ## BITS ## _absorb(&(hmac->inner), k_buf, sizeof(k_buf)); \
   } \
   \
-	/* absorb data into hmac-sha3 context */ \
+  /* absorb data into hmac-sha3 context */ \
   _Bool hmac_sha3_ ## BITS ## _absorb(hmac_sha3_t *hmac, const uint8_t *src, const size_t len) { \
     return sha3_ ## BITS ## _absorb(&(hmac->inner), src, len); \
   } \
   \
-	/* finalize hmac-sha3 context */ \
+  /* finalize hmac-sha3 context */ \
   void hmac_sha3_ ## BITS ## _final(hmac_sha3_t *hmac, uint8_t dst[static OUT_LEN]) { \
     /* finalize inner hash into buffer */ \
     uint8_t buf[OUT_LEN] = { 0 }; \
@@ -2246,15 +2246,15 @@ DEF_SHAKE(256) // shake256_{init,absorb,squeeze}()
     sha3_ ## BITS ## _final(&(hmac->outer), dst); \
   } \
   \
-	/* one-shot hmac-sha3 */ \
+  /* one-shot hmac-sha3 */ \
   void hmac_sha3_ ## BITS(const uint8_t * const k, const size_t k_len, const uint8_t * const m, const size_t m_len, uint8_t dst[static OUT_LEN]) { \
     /* init */ \
     hmac_sha3_t hmac; \
     hmac_sha3_## BITS ##_init(&hmac, k, k_len); \
-	\
+  \
     /* absorb */ \
     hmac_sha3_## BITS ##_absorb(&hmac, m, m_len); \
-	\
+  \
     /* finalize */ \
     hmac_sha3_## BITS ##_final(&hmac, dst); \
   }
@@ -2494,88 +2494,88 @@ static inline bytepad_t bytepad(const size_t data_len, const size_t width) {
 
 // define cshake one-shot and iterative context functions
 #define DEF_CSHAKE(BITS) \
-	/* absorb data into cshake context */ \
-	_Bool cshake ## BITS ## _xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) { \
-		return xof_absorb(xof, SHAKE ## BITS ## _RATE, msg, len); \
-	} \
-	\
-	/* squeeze data from cshake context */ \
-	void cshake ## BITS ## _xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) { \
-		xof_squeeze(xof, SHAKE ## BITS ## _RATE, CSHAKE_PAD, dst, len); \
-	} \
-	\
-	/* initialize cshake context */ \
-	void cshake ## BITS ## _xof_init(sha3_xof_t * const xof, const cshake_params_t params) { \
-		static const uint8_t PAD[SHAKE ## BITS ## _RATE] = { 0 }; \
-	\
-		if (!params.name_len && !params.custom_len) { \
-			/* cshake w/o nist prefix and domain is shake */ \
-			shake ## BITS ## _init(xof); \
-	\
-			/* FIXME: padding will be wrong on subsequent absorb() calls */ \
-			return; \
-		} \
-	\
-		/* build nist function name prefix */ \
-		uint8_t name_buf[9] = { 0 }; \
-		const size_t name_len = encode_string_prefix(name_buf, params.name_len); \
-	\
-		/* build custom string prefix */ \
-		uint8_t custom_buf[9] = { 0 }; \
-		const size_t custom_len = encode_string_prefix(custom_buf, params.custom_len); \
-	\
-		const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len; \
-	\
-		/* build bytepad prefix */ \
-		const bytepad_t bp = bytepad(raw_len, SHAKE ## BITS ## _RATE); \
-	\
-		/* init xof */ \
-		xof_init(xof); \
-	\
-		/* absorb bytepad prefix */ \
-		(void) cshake ## BITS ## _xof_absorb(xof, bp.prefix, bp.prefix_len); \
-	\
-		/* absorb name string */ \
-		(void) cshake ## BITS ## _xof_absorb(xof, name_buf, name_len); \
-		if (params.name_len > 0) { \
-			(void) cshake ## BITS ## _xof_absorb(xof, params.name, params.name_len); \
-		} \
-	\
-		/* absorb custom string */ \
-		(void) cshake ## BITS ## _xof_absorb(xof, custom_buf, custom_len); \
-		if (params.custom_len > 0) { \
-			(void) cshake ## BITS ## _xof_absorb(xof, params.custom, params.custom_len); \
-		} \
-	\
-		/* absorb padding */ \
-		for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) { \
-			const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD)); \
-			(void) cshake ## BITS ## _xof_absorb(xof, PAD, len); \
-		} \
-	} \
-	\
-	/* one-shot cshake */ \
-	void cshake ## BITS ( \
-		const cshake_params_t params, \
-		const uint8_t * const msg, const size_t msg_len, \
-		uint8_t * const dst, const size_t dst_len \
-	) { \
-		if (!params.name_len && !params.custom_len) { \
-			/* cshake w/o nist prefix and domain is shake */ \
-			shake ## BITS (msg, msg_len, dst, dst_len); \
-			return; \
-		} \
-	\
-		/* init */ \
-		sha3_xof_t xof; \
-		cshake ## BITS ## _xof_init(&xof, params); \
-	\
-		/* absorb */ \
-		(void) cshake ## BITS ## _xof_absorb(&xof, msg, msg_len); \
-	\
-		/* squeeze */ \
-		cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
-	}
+  /* absorb data into cshake context */ \
+  _Bool cshake ## BITS ## _xof_absorb(sha3_xof_t * const xof, const uint8_t * const msg, const size_t len) { \
+    return xof_absorb(xof, SHAKE ## BITS ## _RATE, msg, len); \
+  } \
+  \
+  /* squeeze data from cshake context */ \
+  void cshake ## BITS ## _xof_squeeze(sha3_xof_t * const xof, uint8_t * const dst, const size_t len) { \
+    xof_squeeze(xof, SHAKE ## BITS ## _RATE, CSHAKE_PAD, dst, len); \
+  } \
+  \
+  /* initialize cshake context */ \
+  void cshake ## BITS ## _xof_init(sha3_xof_t * const xof, const cshake_params_t params) { \
+    static const uint8_t PAD[SHAKE ## BITS ## _RATE] = { 0 }; \
+  \
+    if (!params.name_len && !params.custom_len) { \
+      /* cshake w/o nist prefix and domain is shake */ \
+      shake ## BITS ## _init(xof); \
+  \
+      /* FIXME: padding will be wrong on subsequent absorb() calls */ \
+      return; \
+    } \
+  \
+    /* build nist function name prefix */ \
+    uint8_t name_buf[9] = { 0 }; \
+    const size_t name_len = encode_string_prefix(name_buf, params.name_len); \
+  \
+    /* build custom string prefix */ \
+    uint8_t custom_buf[9] = { 0 }; \
+    const size_t custom_len = encode_string_prefix(custom_buf, params.custom_len); \
+  \
+    const size_t raw_len = name_len + params.name_len + custom_len + params.custom_len; \
+  \
+    /* build bytepad prefix */ \
+    const bytepad_t bp = bytepad(raw_len, SHAKE ## BITS ## _RATE); \
+  \
+    /* init xof */ \
+    xof_init(xof); \
+  \
+    /* absorb bytepad prefix */ \
+    (void) cshake ## BITS ## _xof_absorb(xof, bp.prefix, bp.prefix_len); \
+  \
+    /* absorb name string */ \
+    (void) cshake ## BITS ## _xof_absorb(xof, name_buf, name_len); \
+    if (params.name_len > 0) { \
+      (void) cshake ## BITS ## _xof_absorb(xof, params.name, params.name_len); \
+    } \
+  \
+    /* absorb custom string */ \
+    (void) cshake ## BITS ## _xof_absorb(xof, custom_buf, custom_len); \
+    if (params.custom_len > 0) { \
+      (void) cshake ## BITS ## _xof_absorb(xof, params.custom, params.custom_len); \
+    } \
+  \
+    /* absorb padding */ \
+    for (size_t ofs = 0; ofs < bp.pad_len; ofs += sizeof(PAD)) { \
+      const size_t len = MIN(bp.pad_len - ofs, sizeof(PAD)); \
+      (void) cshake ## BITS ## _xof_absorb(xof, PAD, len); \
+    } \
+  } \
+  \
+  /* one-shot cshake */ \
+  void cshake ## BITS ( \
+    const cshake_params_t params, \
+    const uint8_t * const msg, const size_t msg_len, \
+    uint8_t * const dst, const size_t dst_len \
+  ) { \
+    if (!params.name_len && !params.custom_len) { \
+      /* cshake w/o nist prefix and domain is shake */ \
+      shake ## BITS (msg, msg_len, dst, dst_len); \
+      return; \
+    } \
+  \
+    /* init */ \
+    sha3_xof_t xof; \
+    cshake ## BITS ## _xof_init(&xof, params); \
+  \
+    /* absorb */ \
+    (void) cshake ## BITS ## _xof_absorb(&xof, msg, msg_len); \
+  \
+    /* squeeze */ \
+    cshake ## BITS ## _xof_squeeze(&xof, dst, dst_len); \
+  }
 
 // declare cshake functions
 DEF_CSHAKE(128) // cshake128
